@@ -23,6 +23,7 @@ LCM(4,5) = 20 step のビーティングが partial synchronization を生む
 観測: blended states / oscillatory ambiguity / smooth transition / hybrid phases
 """
 
+import os
 import random
 from collections import Counter, defaultdict
 import numpy as np
@@ -256,6 +257,14 @@ def simulate() -> Agent:
                 break
         agent.update(ext)
     return agent
+
+
+def _save_panel(fig, ax, path, dpi=150):
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    bbox = ax.get_tightbbox(renderer).transformed(fig.dpi_scale_trans.inverted())
+    fig.savefig(path, dpi=dpi, bbox_inches=bbox, facecolor='#1a1a2e')
+    print(f"Saved -> {path}")
 
 
 # ── 可視化 ────────────────────────────────────────────────────────────────────
@@ -521,9 +530,14 @@ def visualize(agent: Agent):
                  '(observe: S↔E bridge  |  vigilance: E↔D bridge)',
                  color='white', fontsize=12, y=0.98)
 
-    out = 'echoloop_v5_result.png'
+    _img = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'images'))
+    os.makedirs(_img, exist_ok=True)
+    out = os.path.join(_img, 'echoloop_v5_dashboard.png')
     plt.savefig(out, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
     print(f"Saved -> {out}")
+    _save_panel(fig, ax_main,    os.path.join(_img, 'echoloop_v5_activity.png'))
+    _save_panel(fig, ax_ternary, os.path.join(_img, 'echoloop_v5_ternary.png'))
+
     plt.show()
 
 

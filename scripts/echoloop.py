@@ -5,6 +5,7 @@ EchoLoop — 経路が本体のエージェントシミュレーション
 仮説: 行動はニューラルネットではなく「内部経路」の読み出し。
 外界入力は循環ルートを歪めるだけ。よく通る経路は強化、使われない経路は減衰。
 """
+import os
 import random
 from collections import Counter
 
@@ -467,7 +468,9 @@ def visualize(agent: Agent, objects: list[WorldObject],
     fig.suptitle('EchoLoop: Path-Based Agent Simulation',
                  color='white', fontsize=13, y=0.98)
 
-    out = 'echoloop_result.png'
+    _img = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'images'))
+    os.makedirs(_img, exist_ok=True)
+    out = os.path.join(_img, 'echoloop_result.png')
     plt.savefig(out, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
     print(f"Saved → {out}")
     plt.show()

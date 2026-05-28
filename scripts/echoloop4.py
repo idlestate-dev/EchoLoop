@@ -14,6 +14,7 @@ EchoLoop v4 — fatigue/adaptation による spontaneous switching
   ドウェル推定 ~80 steps / 回復 ~320 steps
 """
 
+import os
 import random
 from collections import Counter, defaultdict
 import numpy as np
@@ -430,7 +431,9 @@ def visualize(agent: Agent):
                  '(mood-like dynamics)',
                  color='white', fontsize=13, y=0.98)
 
-    out = 'echoloop_v4_result.png'
+    _img = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'images'))
+    os.makedirs(_img, exist_ok=True)
+    out = os.path.join(_img, 'echoloop_v4_result.png')
     plt.savefig(out, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
     print(f"Saved -> {out}")
     plt.show()

@@ -15,6 +15,7 @@ EchoLoop v3 — 複数ループ競合・attractor 切り替えダイナミクス
   external:   特定 route への加算だけ (reward は edge weight の微調整のみ)
 """
 
+import os
 import random
 from collections import Counter, defaultdict
 import numpy as np
@@ -172,6 +173,14 @@ def simulate() -> Agent:
                 break
         agent.update(ext)
     return agent
+
+
+def _save_panel(fig, ax, path, dpi=150):
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    bbox = ax.get_tightbbox(renderer).transformed(fig.dpi_scale_trans.inverted())
+    fig.savefig(path, dpi=dpi, bbox_inches=bbox, facecolor='#1a1a2e')
+    print(f"Saved -> {path}")
 
 
 # ── 可視化 ────────────────────────────────────────────────────────────────────
@@ -421,9 +430,13 @@ def visualize(agent: Agent):
                  '(social / exploration / defensive)',
                  color='white', fontsize=13, y=0.98)
 
-    out = 'echoloop_v3_result.png'
+    _img = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'images'))
+    os.makedirs(_img, exist_ok=True)
+    out = os.path.join(_img, 'echoloop_v3_result.png')
     plt.savefig(out, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
     print(f"Saved -> {out}")
+    _save_panel(fig, ax_loop, os.path.join(_img, 'echoloop_v3_activity.png'))
+
     plt.show()
 
 

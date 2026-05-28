@@ -15,6 +15,7 @@ EchoLoop v2 — 内部循環ダイナミクスが主役
   Phase 3 [220–400]: curiosity 寄り文脈 (attractor が切り替わるか)
 """
 
+import os
 import random
 from collections import Counter
 import numpy as np
@@ -470,7 +471,9 @@ def visualize(agent: Agent, objects: list, traj_u: list, traj_a: list):
     fig.suptitle('EchoLoop v2 — Internal Circulation Dynamics',
                  color='white', fontsize=13, y=0.98)
 
-    out = 'echoloop_v2_result.png'
+    _img = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'images'))
+    os.makedirs(_img, exist_ok=True)
+    out = os.path.join(_img, 'echoloop_v2_result.png')
     plt.savefig(out, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
     print(f"Saved -> {out}")
     plt.show()

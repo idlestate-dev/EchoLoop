@@ -1,229 +1,130 @@
 # EchoLoop
 
-### A tiny sandbox for route-based internal dynamics, metastability, and attractor competition
+A toy simulation of three recurrent loops competing through shared route nodes.
 
-EchoLoop is an experimental toy model exploring a simple question:
+![Loop activity over 700 steps (v5). Solid lines = loop strength; dashed = shared bridge routes. Background shading marks steps where no loop clearly dominates.](./images/echoloop_v5_activity.png)
 
-> What if intelligence is less about static weights, and more about recurrent flows through evolving routes?
-
-This project is **not** an AGI architecture.
-It is not optimized for benchmarks, reasoning tasks, or next-token prediction.
-
-Instead, EchoLoop is a lightweight dynamical sandbox for observing:
-
-* recurrent loop competition
-* metastable internal states
-* fatigue-driven switching
-* blended attractors
-* ambiguity-induced suppression
-* route-based behavioral dynamics
-
-The project emerged from long conversations with LLMs while thinking about the limitations of purely static weight-based models.
+*Solid lines show each loop's activation strength over time. Dashed lines are the two shared bridge routes. The frequent switching and background shading in v5 are what this project is about.*
 
 ---
 
-# Core Idea
+## What This Is
 
-Modern LLMs are extraordinarily capable, but their interaction pattern often feels fundamentally stateless.
+EchoLoop is a small experimental sandbox. Three named loops — Social, Exploration, and Defensive — share an activation graph. Some nodes belong to more than one loop. You run the simulation and watch what happens.
 
-Biological systems do not simply react to stimuli.
-Their internal state continuously drifts:
+It is not a neuroscience model. It is not a claim of a new theory. It sits closer to agent-based modeling and attractor-dynamics toy problems than to anything production-grade.
 
-* attention wanders
-* vigilance rises and falls
-* fatigue accumulates
-* curiosity competes against fear
-* behavior depends heavily on previous internal momentum
-
-This project explores a different perspective:
-
-> Perhaps cognition does not primarily live inside static weights, but inside recurrent flows through a continuously evolving state landscape.
-
-In EchoLoop:
-
-* nodes are intersections
-* weights are terrain/topology
-* activation flow behaves more like water through riverbeds
-* loops compete for persistence
-* behavior is treated as a readout of internal dynamics, not the optimization target itself
+The closest existing ideas are: stigmergy, trail reinforcement, agent-based modeling, and attractor-like dynamics.
 
 ---
 
-# Architecture
+## Model Structure
 
-Current versions of EchoLoop use several recurrent loops:
-
-## Social Loop
-
-attention → observe → engage → approach
-
-## Exploration Loop
-
-curiosity → observe → wander → vigilance → inspect
-
-## Defensive Loop
-
-alert → vigilance → freeze → withdraw
-
-Some nodes are intentionally shared:
-
-* `observe`
-  bridges Social ↔ Exploration
-
-* `vigilance`
-  bridges Exploration ↔ Defensive
-
-These shared routes create:
-
-* interference
-* blended states
-* metastability
-* dominance ambiguity
-
----
-
-# Key Mechanisms
-
-## Fatigue / Adaptation
-
-Frequently active loops accumulate fatigue.
-
-As fatigue rises:
-
-* attractors weaken
-* dominance collapses
-* spontaneous switching becomes more likely
-
-This creates:
-
-* persistence
-* recovery
-* oscillation
-* wandering dynamics
-
----
-
-## No Global Objective
-
-EchoLoop intentionally avoids:
-
-* global reward optimization
-* argmax action selection
-* explicit task solving
-
-The goal is not to maximize performance.
-
-The goal is to observe what kinds of internal dynamics emerge from:
-
-* recurrent routes
-* shared bottlenecks
-* fatigue
-* inhibition
-* attractor competition
-
----
-
-# Interesting Behaviors Observed
-
-Depending on topology and parameters, the system exhibits:
-
-* spontaneous attractor switching
-* hysteresis
-* metastability
-* ambiguity-driven freezing
-* blended internal states
-* dominance collapse
-* partial synchronization
-* long idle phases caused by unresolved competition
-
-One particularly interesting result:
-
-The Exploration loop tends to become unstable because it is sandwiched between two shared bridge routes (`observe` and `vigilance`), causing constant interruption by social or defensive dynamics.
-
-This was not explicitly programmed as a behavioral rule.
-It emerged from the topology itself.
-
----
-
-# Why This Exists
-
-This repository is intentionally exploratory and incomplete.
-
-It is closer to:
-
-* Artificial Life
-* dynamical systems playgrounds
-* cognitive toy models
-* metastable route simulations
-
-than to production AI systems.
-
-The purpose is not to propose a complete theory of intelligence.
-
-The purpose is to explore whether:
-
-* routes
-* bottlenecks
-* recurrent flows
-* competing internal states
-
-can produce interesting dynamical behavior in extremely lightweight systems.
-
----
-
-# Current Status
-
-The project currently explores:
-
-* recurrent loop dynamics
-* shared-route interference
-* fatigue-driven landscape modulation
-* metastability
-* blended attractors
-
-Potential future directions:
-
-* multi-timescale dynamics
-* slow/fast hierarchical states
-* asymmetric recovery
-* memory traces
-* spontaneous recovery
-* route growth/pruning
-* topology evolution
-
----
-
-# Running
-
-```bash
-python echoloop5.py
+```
+social (4-cycle):      attention → observe → engage → approach → …
+                                     ↑ bridge ↓
+exploration (5-cycle): curiosity → observe → wander → vigilance → inspect → …
+                                                         ↑ bridge ↓
+defensive (4-cycle):   alert → vigilance → freeze → withdraw → …
 ```
 
-Generated outputs typically include:
+Two nodes — `observe` and `vigilance` — are shared between loops. When multiple loops compete for the same node, they interfere with each other.
 
-* loop activity plots
-* ternary dominance diagrams
-* shared-route activations
-* action distributions
-* switching statistics
+| Shared node | Connects |
+|---|---|
+| `observe` | Social ↔ Exploration |
+| `vigilance` | Exploration ↔ Defensive |
+
+Each step, activation flows forward through edges, accumulates fatigue on active edges, and is cross-inhibited by competing loops. There is no global reward or explicit switching rule.
 
 ---
 
-# Disclaimer
+## Key Observation: Separate Loops vs. Shared Routes
 
-This is not a neuroscience model.
-This is not a claim of AGI.
-This is not a replacement for LLMs.
+Adding two shared bridge nodes changed the dynamics substantially.
 
-It is a small experimental sandbox for observing route-based internal dynamics.
+| v3 — fully separated loops | v5 — shared bridge routes |
+|:---:|:---:|
+| ![v3 loop activity. One loop dominates at a time in wide stable blocks. Switching is rare.](./images/echoloop_v3_activity.png) | ![v5 loop activity. Switching is frequent. No loop holds dominance for long.](./images/echoloop_v5_activity.png) |
+| One loop dominates at a time. Switching is rare and block-like. | Switching is frequent. No loop holds dominance for long. |
 
-If you are interested in:
+In v3, each loop has its own private nodes — once a loop wins, it stays dominant. In v5, two bridge nodes (`observe`, `vigilance`) are shared. Any loop using a bridge node is visible to, and disrupted by, the loops on the other side.
 
-* dynamical systems
-* ALife
-* metastability
-* recurrent cognition
-* strange attractors
-* lightweight internal-state simulations
+| Metric | v3 | v5 |
+|---|---|---|
+| Loop switches per run | 2 | **21** |
+| Mean dominance ambiguity | low | **0.60** |
+| Exploration mean dwell | long | **9.5 steps** |
+| Social mean dwell | long | 61 steps |
+| Defensive mean dwell | long | 45 steps |
 
-feel free to fork it, break it, and experiment with the topology.
+The Exploration loop — flanked by both bridge nodes — became the least stable of the three. This behavior was not directly scripted as a switching rule; it appears to arise from the shared-route topology and update dynamics.
+
+### What blended state looks like
+
+![State trajectory in loop-dominance space (v5). Each dot is one timestep. A corner means one loop fully dominates; the center means all three are roughly equal. Most of the run stays away from the corners.](./images/echoloop_v5_ternary.png)
+
+*Each dot is one timestep, placed by relative loop strength. Corner = one loop fully dominant. Center = no clear winner. v5 spends most of its time away from any corner.*
+
+---
+
+## Observed Behaviors
+
+Depending on parameters and random seed, the system exhibits:
+
+- spontaneous loop switching
+- persistent blended states (no loop clearly dominant)
+- brief spikes on bridge nodes when two loops compete for them
+- high idle rate (~70% in v5) when activation is split and no node clears threshold
+- fatigue-driven recovery and oscillation
+
+---
+
+## Version History
+
+| Version | Core change | Switches/run |
+|---|---|---|
+| v1 | Route graph + Hebbian-style updates | — |
+| v2 | Single limit cycle | 0 |
+| v3 | 3-loop competition, fully separated | 2 |
+| v4 | Fatigue added to edges | 4 |
+| v5 | Shared bridge routes (`observe`, `vigilance`) | 21 |
+
+---
+
+## Running
+
+```bash
+python3 scripts/echoloop5.py
+```
+
+Output is saved to `./images/echoloop_v5_dashboard.png` and contains loop activity, the ternary state diagram, bridge vs. exclusive route activations, rolling inter-loop correlation, and action distribution.
+
+[View full diagnostic dashboard](./images/echoloop_v5_dashboard.png)
+
+---
+
+## Relation to Prior Work
+
+This project touches ideas already explored elsewhere:
+
+- **Stigmergy / trail reinforcement** — shared routes strengthen or weaken through use, similar to pheromone trails guiding path selection
+- **Agent-based modeling** — local update rules produce global patterns without a central controller
+- **Attractor dynamics** — loops pull the system toward recurring states; fatigue destabilizes them
+
+EchoLoop does not propose a new framework within any of these fields. It borrows from all of them loosely, in a single-agent, single-process form. The intent is exploratory observation, not formal contribution.
+
+---
+
+## Possible Directions
+
+- vary bridge node membership weights and measure ambiguity
+- add a third bridge connecting Social ↔ Defensive
+- add asymmetric fatigue recovery rates
+- let topology change over time (route pruning / growth)
+
+---
+
+## License
+
+MIT
