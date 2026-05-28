@@ -1,6 +1,6 @@
 # Diagnostic Report: `sudden_approach_while_speaking`
 
-_Simulation output: 1,500 steps · 25.0 s · 15 events total_
+_Simulation output: 1,500 steps · 25.0 s · 17 events total_
 
 
 ---
@@ -20,15 +20,15 @@ Speech from t=2 to t=13 s, followed immediately by a brief high-amplitude approa
 | `orient` | 0.010 | 0.022 | 0.000 | 1.440 | ◀
 | `settle` | 0.530 | 0.616 | 0.462 | 0.797 | ◀
 | `fidget_inhibit` | 0.467 | 0.971 | 0.070 | 1.000 | ◀
-| `ttp` | 0.403 | 0.121 | 0.625 | 1.000 | ◀
-| `recovery` | 0.148 | 0.097 | 0.188 | 0.621 | ◀
+| `ttp` | 0.281 | 0.120 | 0.408 | 0.926 | ◀
+| `recovery` | 0.197 | 0.097 | 0.275 | 0.738 | ◀
 | `freeze_val` | 0.074 | 0.000 | 0.132 | 1.000 | ◀
 
 - `fidget_inhibit` averaged 0.97 during speech — the inhibition path is charging close to saturation while the user speaks, as designed.
 - `settle` averaged 0.62 during speech, indicating sustained listening periods long enough for the slow path to accumulate meaningfully.
-- `ttp` averaged 0.62 during silence — high enough to indicate that turn-taking pressure reached or approached saturation.
+- `ttp` averaged 0.41 during silence, showing meaningful pressure build-up but without saturating.
 - `freeze_val` peaked at 1.000 — sufficient to cross the freeze threshold (0.20) and trigger a suppression window.
-- `recovery` maintained a mean of 0.148 overall, meaning events were firing frequently enough to keep backpressure elevated for significant periods.
+- `recovery` maintained a mean of 0.197 overall, meaning events were firing frequently enough to keep backpressure elevated for significant periods.
 
 ---
 
@@ -66,23 +66,23 @@ _Caused by `fidget_inhibition_path` during speaking; fires stochastically at a r
 
 _Caused by moderate turn-taking pressure (`ttp`) building during silence. Fires at the lower threshold (0.28), often as a precursor to `response_ready`. The 2.5 s refire gap spaces out repeated nods._
 
-**Times:** t=0.92, t=3.43, t=16.12, t=18.63, t=21.15, t=23.67  
-**Mean strength:** 0.694  
+**Times:** t=0.92, t=3.43, t=16.12, t=18.65, t=21.17, t=23.68  
+**Mean strength:** 0.507  
 
-Intervals between nods: 2.52, 12.68, 2.52, 2.52, 2.52 s. Mean 4.55 s, std 4.07 s. 
+Intervals between nods: 2.52, 12.68, 2.53, 2.52, 2.52 s. Mean 4.55 s, std 4.07 s. 
 Higher variance suggests `ttp` fluctuations (from speech or recovery) are actively modulating nod timing.
 
-### `response_ready` — fired 3 times
+### `response_ready` — fired 5 times
 
 _Caused by high turn-taking pressure (`ttp`) crossing the upper threshold (0.65). Once `ttp` saturates, this event is largely paced by the 4.0 s refire gap rather than by path dynamics — an identified limitation._
 
-**Times:** t=16.12, t=20.13, t=24.15  
-**Mean strength:** 0.990  
+**Times:** t=16.12, t=18.03, t=19.97, t=21.98, t=24.00  
+**Mean strength:** 0.779  
 
-`ttp` at firing: 0.969, 1.000, 1.000.  
-`recovery` at firing: 0.051, 0.064, 0.130.  
+`ttp` at firing: 0.931, 0.678, 0.736, 0.767, 0.781.  
+`recovery` at firing: 0.051, 0.118, 0.179, 0.206, 0.248.  
 
-Intervals: 4.02, 4.02 s. Mean 4.02 s, std 0.00 s. 
+Intervals: 1.92, 1.93, 2.02, 2.02 s. Mean 1.97 s, std 0.05 s. 
 Near-zero variance: **`ttp_response_refire_gap` (4.0 s) is dominating.** The path dynamics are no longer contributing to timing once `ttp` saturates.
 
 ### `freeze` — fired 1 time
@@ -122,12 +122,13 @@ Next non-freeze event fired 2.65 s later.
 **Evidence of path-dynamics-driven behavior:**
 
 - `settle` varied at `posture_settle` firings (0.516–0.765). This reflects genuine variation in how deeply the slow path charged across different speech phases — the settle path is contributing real dynamic information.
-- Some events fired with recovery > 0 (max 0.248). Backpressure was actively raising effective thresholds at those moments, confirming that the shared recovery mechanism is influencing event timing beyond the bare refire gaps.
+- Some events fired with recovery > 0 (max 0.376). Backpressure was actively raising effective thresholds at those moments, confirming that the shared recovery mechanism is influencing event timing beyond the bare refire gaps.
 - The `freeze` event and its downstream suppression window involve multiple interacting paths: `freeze_val` accumulates from velocity input, fires and injects recovery, which then holds back `ttp`-driven events until it decays. This is a genuine multi-path interaction — not a scripted pause.
+- `ttp` was not fully saturated at some `response_ready` firings (min 0.678). Speech blocks had discharged pressure enough to keep `ttp` below ceiling, meaning the threshold crossing reflects genuine path state rather than a guaranteed saturation.
 
 **Evidence of parameter-dominated behavior:**
 
-- `response_ready` intervals: mean 4.02 s, std 0.00 s. The near-zero variance means `ttp_response_refire_gap` (4.0 s) is the sole pacemaker once `ttp` saturates. Path dynamics have effectively stopped contributing to timing at that point.
+- `response_ready` intervals: mean 1.97 s, std 0.05 s. The near-zero variance means `ttp_response_refire_gap` (4.0 s) is the sole pacemaker once `ttp` saturates. Path dynamics have effectively stopped contributing to timing at that point.
 
 
 ---
@@ -136,7 +137,7 @@ Next non-freeze event fired 2.65 s later.
 
 The most dominant parameter in this scenario is **`ttp_response_refire_gap` (4.0 s)**.
 
-`response_ready` intervals: 4.02, 4.02 s (std 0.00 s). Once `ttp` saturates, this timer alone determines when `response_ready` fires. It is the single parameter with the most direct, measurable influence on output timing in this scenario. Changing it would immediately change the event rhythm.
+`response_ready` intervals: 1.92, 1.93, 2.02, 2.02 s (std 0.05 s). Once `ttp` saturates, this timer alone determines when `response_ready` fires. It is the single parameter with the most direct, measurable influence on output timing in this scenario. Changing it would immediately change the event rhythm.
 
 **Other strong parameter influences:**
 
@@ -181,4 +182,4 @@ The most dominant parameter in this scenario is **`ttp_response_refire_gap` (4.0
 
 ### Too parameter-dominated / needs tuning
 
-- **`response_ready` timing is a clock** — intervals 4.02, 4.02 s, std 0.00 s. Once `ttp` saturates, the 4.0 s refire gap is the only thing varying the output. This event has stopped behaving like an emergent signal and is functioning as a metronome.
+- **`response_ready` timing is a clock** — intervals 1.92, 1.93, 2.02, 2.02 s, std 0.05 s. Once `ttp` saturates, the 4.0 s refire gap is the only thing varying the output. This event has stopped behaving like an emergent signal and is functioning as a metronome.

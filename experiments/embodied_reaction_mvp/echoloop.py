@@ -37,8 +37,12 @@ class PathConfig:
     ttp_threshold_nod: float = 0.28     # level that triggers micro_nod_ready
     ttp_threshold_response: float = 0.65  # level that triggers response_ready
     ttp_nod_refire_gap: float = 2.5     # minimum seconds between micro_nod_ready
-    ttp_response_refire_gap: float = 4.0  # minimum seconds between response_ready
+    ttp_response_refire_gap: float = 1.8  # base minimum seconds between response_ready
     ttp_response_discharge: float = 0.25  # fraction of ttp remaining after response_ready fires
+    ttp_response_excess_discharge: float = 0.45  # extra drain per unit of ttp above threshold
+    ttp_response_gap_recovery_scale: float = 2.5  # recovery adds this × recovery to the refire gap
+    ttp_response_gap_silence_discount: float = 0.50  # sustained silence trims this from refire gap
+    ttp_accumulation_recovery_suppression: float = 0.25  # recovery slows ttp rebuild (0 = no effect)
     ttp_silence_acceleration: float = 0.20  # extra gain factor at 12 s of silence
 
     # recovery_backpressure_path
@@ -133,9 +137,10 @@ class EchoLoopState:
 
         # ── turn_taking_pressure_path ────────────────────────────────
         if user_speaking < 0.5:
-            # silence_duration provides a gentle late-pressure boost
             silence_factor = 1.0 + cfg.ttp_silence_acceleration * min(silence_duration / 12.0, 1.0)
-            self.ttp = min(1.0, self.ttp + cfg.ttp_gain * silence_factor * dt)
+            # Recovery actively suppresses ttp rebuild — high backpressure slows re-accumulation
+            rebuild_rate = cfg.ttp_gain * silence_factor * (1.0 - self.recovery * cfg.ttp_accumulation_recovery_suppression)
+            self.ttp = min(1.0, self.ttp + rebuild_rate * dt)
         else:
             self.ttp -= self.ttp * cfg.ttp_release_rate * dt
         self.ttp = max(0.0, self.ttp)
@@ -197,8 +202,18 @@ class EchoLoopState:
                 and r < 0.42):
             events.append(_ev("response_ready", self.ttp,
                                ttp=self.ttp, recovery=r))
-            self.ttp *= cfg.ttp_response_discharge
-            self._response_timer = cfg.ttp_response_refire_gap
+            # Discharge: excess pressure above threshold drains extra, so saturated ttp
+            # falls much lower than threshold-level ttp → longer rebuild needed next cycle
+            excess = max(0.0, self.ttp - cfg.ttp_threshold_response)
+            self.ttp = max(0.0, self.ttp * cfg.ttp_response_discharge
+                           - excess * cfg.ttp_response_excess_discharge)
+            # Dynamic gap: scales with current recovery (busy → wait longer) and
+            # discounts slightly for long-sustained silence (pressure warrants response sooner)
+            silence_norm = min(1.0, silence_duration / 15.0)
+            dynamic_gap = (cfg.ttp_response_refire_gap
+                           + r * cfg.ttp_response_gap_recovery_scale
+                           - silence_norm * cfg.ttp_response_gap_silence_discount)
+            self._response_timer = max(1.0, dynamic_gap)
             self.recovery = min(1.0, r + cfg.recovery_on_response)
 
         # ── freeze ───────────────────────────────────────────────────

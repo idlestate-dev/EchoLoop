@@ -1,6 +1,6 @@
 # Diagnostic Report: `repeated_speech_silence`
 
-_Simulation output: 1,680 steps · 28.0 s · 22 events total_
+_Simulation output: 1,680 steps · 28.0 s · 23 events total_
 
 
 ---
@@ -20,14 +20,14 @@ Four speech blocks (t=1.5–4.5, 7–10.5, 13–16, 19.5–22.5 s) separated by 
 | `orient` | 0.034 | 0.077 | 0.000 | 1.440 | ◀
 | `settle` | 0.561 | 0.574 | 0.551 | 0.741 | ◀
 | `fidget_inhibit` | 0.537 | 0.903 | 0.241 | 1.000 | ◀
-| `ttp` | 0.357 | 0.245 | 0.447 | 1.000 | ◀
-| `recovery` | 0.225 | 0.251 | 0.203 | 0.697 | ◀
+| `ttp` | 0.300 | 0.218 | 0.366 | 0.804 | ◀
+| `recovery` | 0.239 | 0.257 | 0.224 | 0.714 | ◀
 | `freeze_val` | 0.000 | 0.000 | 0.000 | 0.000 |
 
 - `fidget_inhibit` averaged 0.90 during speech — the inhibition path is charging close to saturation while the user speaks, as designed.
 - `settle` averaged 0.57 during speech, indicating sustained listening periods long enough for the slow path to accumulate meaningfully.
-- `ttp` averaged 0.45 during silence, showing meaningful pressure build-up but without saturating.
-- `recovery` maintained a mean of 0.225 overall, meaning events were firing frequently enough to keep backpressure elevated for significant periods.
+- `ttp` averaged 0.37 during silence, showing meaningful pressure build-up but without saturating.
+- `recovery` maintained a mean of 0.239 overall, meaning events were firing frequently enough to keep backpressure elevated for significant periods.
 
 ---
 
@@ -65,23 +65,23 @@ _Caused by `fidget_inhibition_path` during speaking; fires stochastically at a r
 
 _Caused by moderate turn-taking pressure (`ttp`) building during silence. Fires at the lower threshold (0.28), often as a precursor to `response_ready`. The 2.5 s refire gap spaces out repeated nods._
 
-**Times:** t=0.92, t=5.08, t=11.18, t=16.65, t=19.17, t=22.87, t=25.38, t=27.90  
-**Mean strength:** 0.447  
+**Times:** t=0.92, t=5.10, t=11.23, t=16.72, t=19.23, t=22.95, t=25.47, t=27.98  
+**Mean strength:** 0.368  
 
-Intervals between nods: 4.17, 6.10, 5.47, 2.52, 3.70, 2.52, 2.52 s. Mean 3.85 s, std 1.37 s. 
+Intervals between nods: 4.18, 6.13, 5.48, 2.52, 3.72, 2.52, 2.52 s. Mean 3.87 s, std 1.38 s. 
 Higher variance suggests `ttp` fluctuations (from speech or recovery) are actively modulating nod timing.
 
-### `response_ready` — fired 4 times
+### `response_ready` — fired 5 times
 
 _Caused by high turn-taking pressure (`ttp`) crossing the upper threshold (0.65). Once `ttp` saturates, this event is largely paced by the 4.0 s refire gap rather than by path dynamics — an identified limitation._
 
-**Times:** t=6.32, t=12.42, t=17.88, t=24.12  
-**Mean strength:** 0.670  
+**Times:** t=6.38, t=12.52, t=17.98, t=24.35, t=26.65  
+**Mean strength:** 0.705  
 
-`ttp` at firing: 0.676, 0.667, 0.668, 0.669.  
-`recovery` at firing: 0.091, 0.073, 0.074, 0.071.  
+`ttp` at firing: 0.674, 0.671, 0.668, 0.703, 0.809.  
+`recovery` at firing: 0.087, 0.070, 0.071, 0.224, 0.168.  
 
-Intervals: 6.10, 5.47, 6.23 s. Mean 5.93 s, std 0.33 s. 
+Intervals: 6.13, 5.47, 6.37, 2.30 s. Mean 5.07 s, std 1.63 s. 
 Variance present: speech, recovery, and `ttp` discharge are all contributing to interval variability — dynamics are active.
 
 ### `freeze` — did not fire
@@ -104,7 +104,7 @@ No significant approach-velocity input was present. `freeze_val` peaked at only 
 
 **Surprising or noteworthy:**
 
-- **Multi-event burst at t≈19.17 s** — `micro_nod_ready`, `posture_settle` fired within 33–150 ms of each other. This is a compression-release artifact: multiple paths had accumulated pressure during a suppression window and discharged simultaneously when that window closed.
+- **Multi-event burst at t≈19.20 s** — `posture_settle`, `micro_nod_ready` fired within 33–150 ms of each other. This is a compression-release artifact: multiple paths had accumulated pressure during a suppression window and discharged simultaneously when that window closed.
 - **`posture_settle` at t=19.20 s — 3.2 s into silence** (settle=0.592). The slow leak rate (0.07/s) allows `settle` to persist above threshold long after speech stops, producing a gradual 'settling' signal that bridges active listening and rest.
 
 
@@ -114,10 +114,10 @@ No significant approach-velocity input was present. `freeze_val` peaked at only 
 
 **Evidence of path-dynamics-driven behavior:**
 
-- `response_ready` intervals: mean 5.93 s, std 0.33 s. The variance shows that `ttp` did not remain saturated throughout — speech discharge or recovery cycles were actively pulling it back down, creating genuine dynamic modulation of response timing.
+- `response_ready` intervals: mean 5.07 s, std 1.63 s. The variance shows that `ttp` did not remain saturated throughout — speech discharge or recovery cycles were actively pulling it back down, creating genuine dynamic modulation of response timing.
 - `settle` varied at `posture_settle` firings (0.509–0.675). This reflects genuine variation in how deeply the slow path charged across different speech phases — the settle path is contributing real dynamic information.
-- Some events fired with recovery > 0 (max 0.527). Backpressure was actively raising effective thresholds at those moments, confirming that the shared recovery mechanism is influencing event timing beyond the bare refire gaps.
-- `ttp` was not fully saturated at some `response_ready` firings (min 0.667). Speech blocks had discharged pressure enough to keep `ttp` below ceiling, meaning the threshold crossing reflects genuine path state rather than a guaranteed saturation.
+- Some events fired with recovery > 0 (max 0.423). Backpressure was actively raising effective thresholds at those moments, confirming that the shared recovery mechanism is influencing event timing beyond the bare refire gaps.
+- `ttp` was not fully saturated at some `response_ready` firings (min 0.668). Speech blocks had discharged pressure enough to keep `ttp` below ceiling, meaning the threshold crossing reflects genuine path state rather than a guaranteed saturation.
 
 **Evidence of parameter-dominated behavior:**
 
@@ -163,7 +163,7 @@ Every `gaze_shift` fired at strength ≈7.20 (= orient_gain × one-frame decay f
 
 ### Interesting emergent-looking behavior
 
-- **Simultaneous burst at t≈19.17 s** (`micro_nod_ready`, `posture_settle`) — multiple paths discharged together after a shared suppression window. This compression-then-release pattern is a genuine emergent consequence of shared backpressure, not a scripted co-occurrence.
+- **Simultaneous burst at t≈19.20 s** (`posture_settle`, `micro_nod_ready`) — multiple paths discharged together after a shared suppression window. This compression-then-release pattern is a genuine emergent consequence of shared backpressure, not a scripted co-occurrence.
 - **`posture_settle` at t=19.20 s — 3.2 s into silence** — the slow `settle` decay allows the path to linger above threshold long after speech ends, creating an unscripted gradual transition from active listening to rest.
 
 ### Too parameter-dominated / needs tuning
