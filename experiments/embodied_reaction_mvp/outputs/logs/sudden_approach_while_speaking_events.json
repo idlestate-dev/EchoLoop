@@ -1,0 +1,107 @@
+[
+  {
+    "time": 0.9166666666666666,
+    "name": "micro_nod_ready",
+    "strength": 0.28221666666666667,
+    "ttp": 0.28221666666666667,
+    "recovery": 0.0
+  },
+  {
+    "time": 2.0,
+    "name": "gaze_shift",
+    "strength": 7.2,
+    "orient": 7.2,
+    "recovery": 0.05850698220341088
+  },
+  {
+    "time": 3.433333333333333,
+    "name": "micro_nod_ready",
+    "strength": 0.3169158816997628,
+    "ttp": 0.3169158816997628,
+    "recovery": 0.11302040610920745
+  },
+  {
+    "time": 4.716666666666667,
+    "name": "posture_settle",
+    "strength": 0.5164163517709165,
+    "settle": 0.5164163517709165,
+    "recovery": 0.09000791189926619
+  },
+  {
+    "time": 9.733333333333333,
+    "name": "posture_settle",
+    "strength": 0.7648371261948681,
+    "settle": 0.7648371261948681,
+    "recovery": 0.0047498932396238865
+  },
+  {
+    "time": 12.383333333333333,
+    "name": "fidget_suppression",
+    "strength": 0.9999999999999875,
+    "fidget_inhibit": 0.9999999999999875,
+    "recovery": 0.021861842141235637
+  },
+  {
+    "time": 13.466666666666667,
+    "name": "freeze",
+    "strength": 0.20365710223249622,
+    "freeze_val": 0.20365710223249622,
+    "recovery": 0.03421063815211217
+  },
+  {
+    "time": 16.116666666666667,
+    "name": "posture_settle",
+    "strength": 0.6398786073803203,
+    "settle": 0.6398786073803203,
+    "recovery": 0.05138105500832156
+  },
+  {
+    "time": 16.116666666666667,
+    "name": "micro_nod_ready",
+    "strength": 0.9689165964607409,
+    "ttp": 0.9689165964607409,
+    "recovery": 0.05138105500832156
+  },
+  {
+    "time": 16.116666666666667,
+    "name": "response_ready",
+    "strength": 0.9689165964607409,
+    "ttp": 0.9689165964607409,
+    "recovery": 0.05138105500832156
+  },
+  {
+    "time": 18.633333333333333,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.07264249417865556
+  },
+  {
+    "time": 20.133333333333333,
+    "name": "response_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.06353179533924493
+  },
+  {
+    "time": 21.15,
+    "name": "micro_nod_ready",
+    "strength": 0.5939722222222221,
+    "ttp": 0.5939722222222221,
+    "recovery": 0.24849420276829437
+  },
+  {
+    "time": 23.666666666666668,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.0511827303580667
+  },
+  {
+    "time": 24.15,
+    "name": "response_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.12953642095718704
+  }
+]

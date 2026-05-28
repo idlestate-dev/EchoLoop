@@ -1,0 +1,156 @@
+[
+  {
+    "time": 0.9166666666666666,
+    "name": "micro_nod_ready",
+    "strength": 0.28221666666666667,
+    "ttp": 0.28221666666666667,
+    "recovery": 0.0
+  },
+  {
+    "time": 2.15,
+    "name": "response_ready",
+    "strength": 0.6618263888888889,
+    "ttp": 0.6618263888888889,
+    "recovery": 0.051849169543625846
+  },
+  {
+    "time": 3.433333333333333,
+    "name": "micro_nod_ready",
+    "strength": 0.5685302083333333,
+    "ttp": 0.5685302083333333,
+    "recovery": 0.19631140506717534
+  },
+  {
+    "time": 5.95,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.04430783223852163
+  },
+  {
+    "time": 6.166666666666667,
+    "name": "response_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.15479599623090728
+  },
+  {
+    "time": 8.466666666666667,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.10271384573710082
+  },
+  {
+    "time": 10.183333333333334,
+    "name": "response_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.060904804648468966
+  },
+  {
+    "time": 10.983333333333333,
+    "name": "micro_nod_ready",
+    "strength": 0.5324333333333336,
+    "ttp": 0.5324333333333336,
+    "recovery": 0.2944903474512249
+  },
+  {
+    "time": 13.5,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.05724255893219123
+  },
+  {
+    "time": 14.2,
+    "name": "response_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.11224313661595259
+  },
+  {
+    "time": 16.016666666666666,
+    "name": "micro_nod_ready",
+    "strength": 0.9040000000000006,
+    "ttp": 0.9040000000000006,
+    "recovery": 0.14174366772352426
+  },
+  {
+    "time": 18.0,
+    "name": "gaze_shift",
+    "strength": 7.2,
+    "orient": 7.2,
+    "recovery": 0.05703460896123179
+  },
+  {
+    "time": 18.216666666666665,
+    "name": "response_ready",
+    "strength": 0.8999683077480822,
+    "ttp": 0.8999683077480822,
+    "recovery": 0.2998653248308076
+  },
+  {
+    "time": 19.28333333333333,
+    "name": "fidget_suppression",
+    "strength": 0.9817004161938908,
+    "fidget_inhibit": 0.9817004161938908,
+    "recovery": 0.3387864840130418
+  },
+  {
+    "time": 20.333333333333332,
+    "name": "fidget_suppression",
+    "strength": 0.9992771830207938,
+    "fidget_inhibit": 0.9992771830207938,
+    "recovery": 0.17119031056624237
+  },
+  {
+    "time": 20.833333333333332,
+    "name": "posture_settle",
+    "strength": 0.528872514957339,
+    "settle": 0.528872514957339,
+    "recovery": 0.15455509220688562
+  },
+  {
+    "time": 21.78333333333333,
+    "name": "micro_nod_ready",
+    "strength": 0.3061144852092731,
+    "ttp": 0.3061144852092731,
+    "recovery": 0.15566237627910115
+  },
+  {
+    "time": 23.0,
+    "name": "response_ready",
+    "strength": 0.6797325407648286,
+    "ttp": 0.6797325407648286,
+    "recovery": 0.11097863423286508
+  },
+  {
+    "time": 24.3,
+    "name": "micro_nod_ready",
+    "strength": 0.5773206351912072,
+    "ttp": 0.5773206351912072,
+    "recovery": 0.21444781115604897
+  },
+  {
+    "time": 26.816666666666666,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.04669723927702213
+  },
+  {
+    "time": 27.016666666666666,
+    "name": "response_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.1589217622036311
+  },
+  {
+    "time": 29.333333333333332,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.10198288236902477
+  }
+]

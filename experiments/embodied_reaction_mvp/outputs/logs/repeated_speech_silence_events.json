@@ -1,0 +1,156 @@
+[
+  {
+    "time": 0.9166666666666666,
+    "name": "micro_nod_ready",
+    "strength": 0.28221666666666667,
+    "ttp": 0.28221666666666667,
+    "recovery": 0.0
+  },
+  {
+    "time": 1.5,
+    "name": "gaze_shift",
+    "strength": 7.2,
+    "orient": 7.2,
+    "recovery": 0.08751731950568213
+  },
+  {
+    "time": 4.15,
+    "name": "posture_settle",
+    "strength": 0.5090528424528856,
+    "settle": 0.5090528424528856,
+    "recovery": 0.045855736733984805
+  },
+  {
+    "time": 5.083333333333333,
+    "name": "micro_nod_ready",
+    "strength": 0.29845801958186935,
+    "ttp": 0.29845801958186935,
+    "recovery": 0.10650663927488864
+  },
+  {
+    "time": 6.316666666666666,
+    "name": "response_ready",
+    "strength": 0.6760121862485361,
+    "ttp": 0.6760121862485361,
+    "recovery": 0.09129403238137943
+  },
+  {
+    "time": 7.0,
+    "name": "gaze_shift",
+    "strength": 7.200000000000001,
+    "orient": 7.200000000000001,
+    "recovery": 0.3410297022244263
+  },
+  {
+    "time": 9.166666666666666,
+    "name": "posture_settle",
+    "strength": 0.6531206605660261,
+    "settle": 0.6531206605660261,
+    "recovery": 0.11195344889091666
+  },
+  {
+    "time": 11.183333333333334,
+    "name": "micro_nod_ready",
+    "strength": 0.2886804239798952,
+    "ttp": 0.2886804239798952,
+    "recovery": 0.057535888893182216
+  },
+  {
+    "time": 12.416666666666666,
+    "name": "response_ready",
+    "strength": 0.6668512573132287,
+    "ttp": 0.6668512573132287,
+    "recovery": 0.07315765567266747
+  },
+  {
+    "time": 13.0,
+    "name": "gaze_shift",
+    "strength": 7.2,
+    "orient": 7.2,
+    "recovery": 0.3582944405616614
+  },
+  {
+    "time": 14.183333333333334,
+    "name": "posture_settle",
+    "strength": 0.6751861903090954,
+    "settle": 0.6751861903090954,
+    "recovery": 0.2538180992329225
+  },
+  {
+    "time": 16.65,
+    "name": "micro_nod_ready",
+    "strength": 0.28961140907914185,
+    "ttp": 0.28961140907914185,
+    "recovery": 0.05950249895386291
+  },
+  {
+    "time": 17.883333333333333,
+    "name": "response_ready",
+    "strength": 0.6675766868569198,
+    "ttp": 0.6675766868569198,
+    "recovery": 0.07388599209025626
+  },
+  {
+    "time": 19.166666666666668,
+    "name": "micro_nod_ready",
+    "strength": 0.56825667171423,
+    "ttp": 0.56825667171423,
+    "recovery": 0.20415064780975778
+  },
+  {
+    "time": 19.2,
+    "name": "posture_settle",
+    "strength": 0.5916395594884791,
+    "settle": 0.5916395594884791,
+    "recovery": 0.335034479538886
+  },
+  {
+    "time": 19.5,
+    "name": "gaze_shift",
+    "strength": 7.2,
+    "orient": 7.2,
+    "recovery": 0.40448695367228005
+  },
+  {
+    "time": 20.333333333333332,
+    "name": "fidget_suppression",
+    "strength": 0.9290452858678243,
+    "fidget_inhibit": 0.9290452858678243,
+    "recovery": 0.36007732353978267
+  },
+  {
+    "time": 22.866666666666667,
+    "name": "micro_nod_ready",
+    "strength": 0.28782162516511006,
+    "ttp": 0.28782162516511006,
+    "recovery": 0.0546057783377628
+  },
+  {
+    "time": 24.116666666666667,
+    "name": "response_ready",
+    "strength": 0.6691757918317767,
+    "ttp": 0.6691757918317767,
+    "recovery": 0.07111151920429444
+  },
+  {
+    "time": 24.216666666666665,
+    "name": "posture_settle",
+    "strength": 0.6508038114034572,
+    "settle": 0.6508038114034572,
+    "recovery": 0.5269187561110743
+  },
+  {
+    "time": 25.383333333333333,
+    "name": "micro_nod_ready",
+    "strength": 0.5617022812912774,
+    "ttp": 0.5617022812912774,
+    "recovery": 0.2762494667410109
+  },
+  {
+    "time": 27.9,
+    "name": "micro_nod_ready",
+    "strength": 1.0,
+    "ttp": 1.0,
+    "recovery": 0.05483938773367178
+  }
+]
