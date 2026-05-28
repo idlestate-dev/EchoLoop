@@ -17,9 +17,11 @@ import time
 from echoloop import run_simulation
 from scenarios import SCENARIOS, get_scenario
 from plotting import plot_inputs, plot_internals, plot_event_raster, plot_iei
+from diagnostics import generate_report
 
 LOGS_DIR = os.path.join("outputs", "logs")
 PLOTS_DIR = os.path.join("outputs", "plots")
+REPORTS_DIR = os.path.join("outputs", "reports")
 DT = 1.0 / 60.0
 
 
@@ -63,6 +65,14 @@ def run_and_save(scenario_name: str, verbose: bool = False) -> None:
     plot_internals(records, scenario_name, PLOTS_DIR)
     plot_event_raster(records, event_log, scenario_name, PLOTS_DIR)
     plot_iei(event_log, scenario_name, PLOTS_DIR)
+
+    # Diagnostic report
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+    report_path = os.path.join(REPORTS_DIR, f"{scenario_name}.md")
+    report = generate_report(scenario_name, records, event_log)
+    with open(report_path, "w") as fh:
+        fh.write(report)
+    print(f"  report → {report_path}")
 
 
 def main() -> None:
