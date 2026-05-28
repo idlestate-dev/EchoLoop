@@ -1,74 +1,229 @@
 # EchoLoop
 
-経路が本体のエージェントシミュレーション。
+### A tiny sandbox for route-based internal dynamics, metastability, and attractor competition
 
-## 仮説
+EchoLoop is an experimental toy model exploring a simple question:
 
-> ニューラルネットではなく「経路」がエージェントの主体である。  
-> 外界入力は内部循環ルートを歪めるだけ。行動は内部状態の読み出しとして発火する。
+> What if intelligence is less about static weights, and more about recurrent flows through evolving routes?
 
-## デモ
+This project is **not** an AGI architecture.
+It is not optimized for benchmarks, reasoning tasks, or next-token prediction.
 
-![simulation result](echoloop_result.png)
+Instead, EchoLoop is a lightweight dynamical sandbox for observing:
 
-- **左**: 2D ワールド。ユーザー (青) とエージェント (緑) の軌跡、アクション種別を色付きドットで表示
-- **右上**: 300 step のルート activation 推移。赤シェード = ユーザーがエージェントを見ているフェーズ
-- **右下左**: 内部ノード/エッジグラフ。edge.strength を線の濃さで表現
-- **右下右**: 最終ルート strength (= 学習済み経路の強さ)
+* recurrent loop competition
+* metastable internal states
+* fatigue-driven switching
+* blended attractors
+* ambiguity-induced suppression
+* route-based behavioral dynamics
 
-## 構造
+The project emerged from long conversations with LLMs while thinking about the limitations of purely static weight-based models.
 
-```
-User ──gaze / reaction──▶ Agent
-                            │
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-          attention      curiosity     approach    observe    idle
-              │             │
-              └──── route-to-route interactions ────┘
-                            │
-                     Node / Edge Graph
-                    (構造的学習レイヤ)
-```
+---
 
-### ルート一覧
+# Core Idea
 
-| ルート | アクション | 主な入力源 |
-|---|---|---|
-| `attention` | `look_at_user` | ユーザーの視線がエージェントに向いている |
-| `curiosity` | `point` | 周囲のオブジェクトの interest 総和 |
-| `approach` | `move_toward` | ユーザーが近くにいて reaction が正 |
-| `observe` | `look_at_object` | attention / curiosity からの流入 |
-| `idle` | `idle` | 常時ベースライン |
+Modern LLMs are extraordinarily capable, but their interaction pattern often feels fundamentally stateless.
 
-### ノード生成ルール
+Biological systems do not simply react to stimuli.
+Their internal state continuously drifts:
 
-- **80%**: よく使われる edge 周辺に生成 (探索効率重視)
-- **20%**: 完全ランダム生成 (局所最適回避)
+* attention wanders
+* vigilance rises and falls
+* fatigue accumulates
+* curiosity competes against fear
+* behavior depends heavily on previous internal momentum
 
-## 実行
+This project explores a different perspective:
+
+> Perhaps cognition does not primarily live inside static weights, but inside recurrent flows through a continuously evolving state landscape.
+
+In EchoLoop:
+
+* nodes are intersections
+* weights are terrain/topology
+* activation flow behaves more like water through riverbeds
+* loops compete for persistence
+* behavior is treated as a readout of internal dynamics, not the optimization target itself
+
+---
+
+# Architecture
+
+Current versions of EchoLoop use several recurrent loops:
+
+## Social Loop
+
+attention → observe → engage → approach
+
+## Exploration Loop
+
+curiosity → observe → wander → vigilance → inspect
+
+## Defensive Loop
+
+alert → vigilance → freeze → withdraw
+
+Some nodes are intentionally shared:
+
+* `observe`
+  bridges Social ↔ Exploration
+
+* `vigilance`
+  bridges Exploration ↔ Defensive
+
+These shared routes create:
+
+* interference
+* blended states
+* metastability
+* dominance ambiguity
+
+---
+
+# Key Mechanisms
+
+## Fatigue / Adaptation
+
+Frequently active loops accumulate fatigue.
+
+As fatigue rises:
+
+* attractors weaken
+* dominance collapses
+* spontaneous switching becomes more likely
+
+This creates:
+
+* persistence
+* recovery
+* oscillation
+* wandering dynamics
+
+---
+
+## No Global Objective
+
+EchoLoop intentionally avoids:
+
+* global reward optimization
+* argmax action selection
+* explicit task solving
+
+The goal is not to maximize performance.
+
+The goal is to observe what kinds of internal dynamics emerge from:
+
+* recurrent routes
+* shared bottlenecks
+* fatigue
+* inhibition
+* attractor competition
+
+---
+
+# Interesting Behaviors Observed
+
+Depending on topology and parameters, the system exhibits:
+
+* spontaneous attractor switching
+* hysteresis
+* metastability
+* ambiguity-driven freezing
+* blended internal states
+* dominance collapse
+* partial synchronization
+* long idle phases caused by unresolved competition
+
+One particularly interesting result:
+
+The Exploration loop tends to become unstable because it is sandwiched between two shared bridge routes (`observe` and `vigilance`), causing constant interruption by social or defensive dynamics.
+
+This was not explicitly programmed as a behavioral rule.
+It emerged from the topology itself.
+
+---
+
+# Why This Exists
+
+This repository is intentionally exploratory and incomplete.
+
+It is closer to:
+
+* Artificial Life
+* dynamical systems playgrounds
+* cognitive toy models
+* metastable route simulations
+
+than to production AI systems.
+
+The purpose is not to propose a complete theory of intelligence.
+
+The purpose is to explore whether:
+
+* routes
+* bottlenecks
+* recurrent flows
+* competing internal states
+
+can produce interesting dynamical behavior in extremely lightweight systems.
+
+---
+
+# Current Status
+
+The project currently explores:
+
+* recurrent loop dynamics
+* shared-route interference
+* fatigue-driven landscape modulation
+* metastability
+* blended attractors
+
+Potential future directions:
+
+* multi-timescale dynamics
+* slow/fast hierarchical states
+* asymmetric recovery
+* memory traces
+* spontaneous recovery
+* route growth/pruning
+* topology evolution
+
+---
+
+# Running
 
 ```bash
-pip install numpy matplotlib
-python echoloop.py
+python echoloop5.py
 ```
 
-`echoloop_result.png` に可視化結果を保存し、ウィンドウ表示する。
+Generated outputs typically include:
 
-## 結果例 (seed=42, 300 steps)
+* loop activity plots
+* ternary dominance diagrams
+* shared-route activations
+* action distributions
+* switching statistics
 
-| ルート | 最終 activation | 最終 strength |
-|---|---|---|
-| `attention` | 0.342 | **2.17** ← 強化された |
-| `curiosity` | 0.304 | 0.99 |
-| `approach` | 0.266 | 1.00 |
-| `observe` | 0.106 | 1.00 |
-| `idle` | 0.151 | 1.05 |
+---
 
-アクション分布: `look_at_user` 78% / `point` 13% / `idle` 7% / `move_toward` 2%
+# Disclaimer
 
-`attention` の strength が 2.17 まで成長しているのは、  
-ユーザーに注目されるたびに正の reaction で強化されたため。  
-「よく通る経路が優先される」という仮説の動作が数値で確認できる。
+This is not a neuroscience model.
+This is not a claim of AGI.
+This is not a replacement for LLMs.
 
-詳細は [RESULTS.md](RESULTS.md) を参照。
+It is a small experimental sandbox for observing route-based internal dynamics.
+
+If you are interested in:
+
+* dynamical systems
+* ALife
+* metastability
+* recurrent cognition
+* strange attractors
+* lightweight internal-state simulations
+
+feel free to fork it, break it, and experiment with the topology.
