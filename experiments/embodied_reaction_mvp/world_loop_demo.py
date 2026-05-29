@@ -109,9 +109,15 @@ SETTLE_FLASH_LIFE= 0.70
 RESP_FLASH_LIFE  = 0.50
 NOD_FLASH_LIFE   = 0.40
 
-STEP_BACK_PX     = 28.0   # pixels NPC retreats per freeze event
-STEP_BACK_GATE   = 0.30   # execute step_back when recovery drops below this
-STEP_BACK_RATE   = 35.0   # px/s at which pending step_back is applied (~0.8s to complete)
+STEP_BACK_GATE     = 0.30   # recovery must be below this to execute step_back
+STEP_BACK_DURATION = 0.30   # s of active NPC retreat per step_back event (0.2–0.4 range)
+STEP_BACK_COOLDOWN = 2.0    # s before another step_back can be triggered
+STEP_BACK_RATE     = 55.0   # px/s during active phase → ~16.5 px total retreat
+
+FREEZE_REFRACTORY  = 6.0    # s: freeze event is suppressed after it fires once
+
+COMFORT_DISTANCE  = 120.0   # px: interpersonal spacing; slow player drift stops here
+COMFORT_RATE      = 8.0     # px/s: mild NPC outward correction when inside comfort zone
 
 # Observation normalisation for approach_velocity.
 # EchoLoop expects a normalised signal (0–2.5 range, not raw px/s).
@@ -142,9 +148,11 @@ class World:
     approach_velocity: float = 0.0   # positive = player moving toward NPC
 
     # NPC action state
-    npc_frozen: bool          = False
-    npc_freeze_timer: float   = 0.0
-    npc_step_back_pending: float = 0.0  # px queued for delayed step-back
+    npc_frozen: bool             = False
+    npc_freeze_timer: float      = 0.0
+    npc_freeze_refractory: float = 0.0  # s remaining; freeze suppressed while > 0
+    npc_step_back_active: float  = 0.0  # s of movement remaining in current step_back
+    npc_step_back_cooldown: float= 0.0  # s until next step_back can trigger
 
     # Visual timers (seconds remaining)
     gaze_snap: float    = 0.0
@@ -212,14 +220,14 @@ class PlayerScript_SuddenApproach:
     WATCHDOG_DUR    = 5.0    # s: advance waiting phase if NPC does nothing
     SPEAK2_DUR      = 3.5    # s for second utterance
     SPEAK3_DUR      = 4.0    # s for third utterance
-    MIN_DISTANCE    = 65.0   # px: stop approaching if this close
+    MIN_DISTANCE    = 65.0   # px: hard collision guard; prevents visual pass-through
 
-    def __init__(self):
+    def __init__(self, seed: int = 7):
         self.phase         = "idle"
         self._phase_t      = 0.0
         self._watchdog     = 0.0
         self._retreat_done = 0.0
-        self._rng          = random.Random(7)
+        self._rng          = random.Random(seed)
 
     def _enter(self, new_phase: str):
         self.phase         = new_phase
@@ -229,10 +237,11 @@ class PlayerScript_SuddenApproach:
 
     def update(self, w: World, npc_frozen: bool,
                npc_responded: bool, npc_stepped_back: bool,
-               npc_gaze_active: bool, dt: float):
+               npc_gaze_active: bool, dt: float, *, npc_nodded: bool = False):
         """
         Returns (speaking: bool, vx: float, energy: float).
         vx > 0 = moving toward NPC (right); vx < 0 = retreating (left).
+        npc_nodded is accepted for interface compatibility; baseline ignores it.
         """
         self._phase_t += dt
 
@@ -256,7 +265,7 @@ class PlayerScript_SuddenApproach:
         elif self.phase == "approach":
             if npc_frozen:
                 self._enter("hesitate")
-            elif w.distance < self.MIN_DISTANCE:
+            elif w.distance < COMFORT_DISTANCE:
                 self._enter("linger")
 
         elif self.phase == "hesitate":
@@ -288,12 +297,14 @@ class PlayerScript_SuddenApproach:
                 self._enter("approach2")
 
         elif self.phase == "approach2":
-            # Silent approach — ttp builds from silence while freeze path also accumulates.
+            # Primary exit: freeze. If freeze is suppressed by refractory the player
+            # stops at COMFORT_DISTANCE (after at least 1s of approach) rather than
+            # pressing in and triggering NPC comfort correction accumulation.
             if npc_frozen:
                 self._enter("hesitate2")
-            elif npc_responded or w.distance < self.MIN_DISTANCE:
+            elif w.distance < COMFORT_DISTANCE and self._phase_t >= 1.0:
                 self._enter("linger")
-            elif self._watchdog >= self.WATCHDOG_DUR:
+            elif self._phase_t >= 8.0:
                 self._enter("linger")
 
         elif self.phase == "hesitate2":
@@ -316,13 +327,22 @@ class PlayerScript_SuddenApproach:
                 self._enter("approach3")
 
         elif self.phase == "approach3":
-            # Third approach re-uses hesitate (not hesitate2) so the cycle can repeat.
+            # Same logic as approach2; re-uses hesitate so the cycle can repeat.
             if npc_frozen:
                 self._enter("hesitate")
-            elif npc_responded or w.distance < self.MIN_DISTANCE:
+            elif w.distance < COMFORT_DISTANCE and self._phase_t >= 1.0:
                 self._enter("linger")
+            elif self._phase_t >= 8.0:
+                self._enter("linger")
+
+        elif self.phase == "linger":
+            # React to NPC turn signals so the interaction doesn't stall here.
+            if npc_frozen:
+                self._enter("hesitate")
+            elif npc_responded:
+                self._enter("speak2")
             elif self._watchdog >= self.WATCHDOG_DUR:
-                self._enter("linger")
+                self._enter("speak2")
 
         # ── Outputs ────────────────────────────────────────────────────────────
 
@@ -337,15 +357,226 @@ class PlayerScript_SuddenApproach:
             "hesitate":   0.0,
             "back_off":  -self.RETREAT_SPEED,
             "resume":     14.0,
-            "speak2":     5.0,   # slow drift toward NPC; stays below AV_DEAD_ZONE
+            "speak2":    -self.RETREAT_SPEED,  # retreat to speaking range before next approach
             "approach2":  self.APPROACH2_SPEED,
             "hesitate2":  0.0,
             "back_off2": -self.RETREAT_SPEED,
-            "speak3":     5.0,   # slow drift toward NPC; stays below AV_DEAD_ZONE
+            "speak3":     0.0,   # hold position while speaking
             "approach3":  self.APPROACH2_SPEED,
-            "linger":     5.0,
+            "linger":     0.0,   # stationary at comfort distance
         }
         vx = _vx.get(self.phase, 0.0)
+        # speak2 retreats until COMFORT_DISTANCE + 30px; stops retreating once far enough.
+        if self.phase == "speak2" and w.distance >= COMFORT_DISTANCE + 30:
+            vx = 0.0
+        # Hard collision guard for active approaches.
+        elif vx > 0 and w.distance <= self.MIN_DISTANCE:
+            vx = 0.0
+
+        energy = 0.0
+        if speaking:
+            t      = w.sim_time
+            energy = 0.55 + 0.20 * math.sin(t * 5.5)
+            energy += 0.08 * self._rng.gauss(0, 1)
+            energy = max(0.0, min(1.0, energy))
+
+        return speaking, vx, energy
+
+
+class PlayerScript_SuddenApproachLoose:
+    """
+    Loose variant of PlayerScript_SuddenApproach (--variant loose).
+
+    Same phase graph; stochastic timing variation breaks the fixed-period feel.
+
+    Differences vs baseline:
+    - speak2/speak3 duration varies ±random per utterance
+    - retreat distance varies per back_off
+    - speak2 retreat target varies (sets starting distance for each re-approach)
+    - response_ready can briefly pause speaking instead of always advancing phase
+    - linger: micro_nod or response_ready can enter comfortable_idle (silent hold)
+    - comfortable_idle: 3–7 s stationary silence at comfort distance before re-engaging
+
+    Deterministic with --seed.
+    """
+
+    APPROACH_SPEED  = 65.0
+    APPROACH2_SPEED = 30.0
+    RETREAT_SPEED   = 20.0
+    RETREAT_PX      = 14.0
+    HESITATE_DUR    = 2.2
+    WATCHDOG_DUR    = 5.0
+    SPEAK2_DUR      = 3.5
+    SPEAK3_DUR      = 4.0
+    MIN_DISTANCE    = 65.0
+
+    def __init__(self, seed: int = 7):
+        self.phase           = "idle"
+        self._phase_t        = 0.0
+        self._watchdog       = 0.0
+        self._retreat_done   = 0.0
+        self._rng            = random.Random(seed)
+        # Per-phase stochastic state (set in _enter)
+        self._speak_dur      = self.SPEAK2_DUR
+        self._speak_range    = COMFORT_DISTANCE + 30.0
+        self._retreat_target = self.RETREAT_PX
+        self._idle_dur       = 0.0
+        self._speaking_pause = 0.0   # s remaining; suppresses speaking output
+
+    def _enter(self, new_phase: str):
+        self.phase         = new_phase
+        self._phase_t      = 0.0
+        self._watchdog     = 0.0
+        self._retreat_done = 0.0
+        if new_phase == "speak2":
+            self._speak_dur   = self.SPEAK2_DUR  + self._rng.uniform(-0.5, 2.0)
+            self._speak_range = COMFORT_DISTANCE + self._rng.uniform(20.0, 50.0)
+        elif new_phase == "speak3":
+            self._speak_dur   = self.SPEAK3_DUR  + self._rng.uniform(-0.5, 2.0)
+        elif new_phase in ("back_off", "back_off2"):
+            self._retreat_target = self.RETREAT_PX * self._rng.uniform(0.8, 1.6)
+        elif new_phase == "comfortable_idle":
+            self._idle_dur = self._rng.uniform(3.0, 7.0)
+
+    def update(self, w: World, npc_frozen: bool,
+               npc_responded: bool, npc_stepped_back: bool,
+               npc_gaze_active: bool, dt: float, *, npc_nodded: bool = False):
+        """Returns (speaking: bool, vx: float, energy: float)."""
+        self._phase_t        += dt
+        self._speaking_pause  = max(0.0, self._speaking_pause - dt)
+
+        if npc_frozen or npc_stepped_back or npc_responded or npc_gaze_active:
+            self._watchdog = 0.0
+        else:
+            self._watchdog += dt
+
+        # ── Phase transitions ──────────────────────────────────────────────────
+
+        if self.phase == "idle":
+            if w.sim_time >= 2.0:
+                self._enter("speak")
+
+        elif self.phase == "speak":
+            if w.sim_time >= 10.0:
+                self._enter("approach")
+
+        elif self.phase == "approach":
+            if npc_frozen:
+                self._enter("hesitate")
+            elif w.distance < COMFORT_DISTANCE:
+                self._enter("linger")
+
+        elif self.phase == "hesitate":
+            if npc_stepped_back:
+                self._enter("back_off")
+            elif npc_responded:
+                self._enter("speak2")
+            elif self._phase_t >= self.HESITATE_DUR:
+                self._enter("resume")
+
+        elif self.phase == "back_off":
+            self._retreat_done += self.RETREAT_SPEED * dt
+            if npc_responded:
+                self._enter("speak2")
+            elif self._retreat_done >= self._retreat_target or self._phase_t >= 2.0:
+                self._enter("speak2")
+
+        elif self.phase == "resume":
+            if npc_responded or self._watchdog >= self.WATCHDOG_DUR:
+                self._enter("speak2")
+
+        elif self.phase == "speak2":
+            if npc_responded and self._speaking_pause <= 0 and self._rng.random() < 0.35:
+                self._speaking_pause = self._rng.uniform(0.5, 1.5)
+            if self._phase_t >= self._speak_dur:
+                self._enter("approach2")
+
+        elif self.phase == "approach2":
+            if npc_frozen:
+                self._enter("hesitate2")
+            elif w.distance < COMFORT_DISTANCE and self._phase_t >= 1.0:
+                self._enter("linger")
+            elif self._phase_t >= 8.0:
+                self._enter("linger")
+
+        elif self.phase == "hesitate2":
+            if npc_stepped_back:
+                self._enter("back_off2")
+            elif npc_responded:
+                self._enter("speak3")
+            elif self._phase_t >= self.HESITATE_DUR:
+                self._enter("speak3")
+
+        elif self.phase == "back_off2":
+            self._retreat_done += self.RETREAT_SPEED * dt
+            if npc_responded:
+                self._enter("speak3")
+            elif self._retreat_done >= self._retreat_target or self._phase_t >= 2.0:
+                self._enter("speak3")
+
+        elif self.phase == "speak3":
+            if npc_responded and self._speaking_pause <= 0 and self._rng.random() < 0.35:
+                self._speaking_pause = self._rng.uniform(0.5, 1.5)
+            if self._phase_t >= self._speak_dur:
+                self._enter("approach3")
+
+        elif self.phase == "approach3":
+            if npc_frozen:
+                self._enter("hesitate")
+            elif w.distance < COMFORT_DISTANCE and self._phase_t >= 1.0:
+                self._enter("linger")
+            elif self._phase_t >= 8.0:
+                self._enter("linger")
+
+        elif self.phase == "linger":
+            if npc_frozen:
+                self._enter("hesitate")
+            elif npc_nodded and self._rng.random() < 0.45:
+                self._enter("comfortable_idle")
+            elif npc_responded:
+                if self._rng.random() < 0.25:
+                    self._enter("comfortable_idle")
+                else:
+                    self._enter("speak2")
+            elif self._watchdog >= self.WATCHDOG_DUR:
+                self._enter("speak2")
+
+        elif self.phase == "comfortable_idle":
+            self._idle_dur -= dt
+            if npc_frozen:
+                self._enter("hesitate")
+            elif npc_responded:
+                self._enter("speak2")
+            elif self._idle_dur <= 0.0 or self._watchdog >= self.WATCHDOG_DUR:
+                self._enter("speak2")
+
+        # ── Outputs ────────────────────────────────────────────────────────────
+
+        speaking = self.phase in ("speak", "approach", "speak2", "speak3")
+        if self._speaking_pause > 0:
+            speaking = False
+
+        _vx = {
+            "idle":             0.0,
+            "speak":            0.0,
+            "approach":         self.APPROACH_SPEED,
+            "hesitate":         0.0,
+            "back_off":        -self.RETREAT_SPEED,
+            "resume":           14.0,
+            "speak2":          -self.RETREAT_SPEED,
+            "approach2":        self.APPROACH2_SPEED,
+            "hesitate2":        0.0,
+            "back_off2":       -self.RETREAT_SPEED,
+            "speak3":           0.0,
+            "approach3":        self.APPROACH2_SPEED,
+            "linger":           0.0,
+            "comfortable_idle": 0.0,
+        }
+        vx = _vx.get(self.phase, 0.0)
+        if self.phase == "speak2" and w.distance >= self._speak_range:
+            vx = 0.0
+        elif vx > 0 and w.distance <= self.MIN_DISTANCE:
+            vx = 0.0
 
         energy = 0.0
         if speaking:
@@ -358,7 +589,10 @@ class PlayerScript_SuddenApproach:
 
 
 PLAYER_SCRIPTS = {
-    "sudden_approach_while_speaking_closed_loop": PlayerScript_SuddenApproach,
+    "sudden_approach_while_speaking_closed_loop": {
+        "baseline": PlayerScript_SuddenApproach,
+        "loose":    PlayerScript_SuddenApproachLoose,
+    },
 }
 
 
@@ -379,10 +613,16 @@ def apply_events(events: list, w: World) -> list:
         elif name == "posture_settle":
             w.settle_flash = SETTLE_FLASH_LIFE
         elif name == "freeze":
-            w.npc_frozen      = True
-            w.npc_freeze_timer = max(w.npc_freeze_timer, 0.5)
-            w.npc_step_back_pending += STEP_BACK_PX  # queued; executes after recovery drops
-            actions.append("freeze")
+            if w.npc_freeze_refractory > 0:
+                pass   # refractory active — suppress this freeze event
+            else:
+                w.npc_frozen = True
+                w.npc_freeze_timer = max(w.npc_freeze_timer, 0.5)
+                if w.npc_step_back_cooldown <= 0:
+                    w.npc_step_back_active = STEP_BACK_DURATION
+                    w.npc_step_back_cooldown = STEP_BACK_COOLDOWN
+                w.npc_freeze_refractory = FREEZE_REFRACTORY
+                actions.append("freeze")
         elif name == "micro_nod_ready":
             w.nod_flash = NOD_FLASH_LIFE
             actions.append("micro_nod")
@@ -395,10 +635,22 @@ def apply_events(events: list, w: World) -> list:
 def update_npc(w: World, state: dict, dt: float) -> bool:
     """
     Apply NPC movement.
-    Step_back executes after freeze clears AND recovery falls below gate threshold.
+
+    step_back is discrete: STEP_BACK_DURATION seconds of active movement at
+    STEP_BACK_RATE px/s, gated by recovery < STEP_BACK_GATE (timer pauses while
+    gated so total retreat distance is preserved). Followed by STEP_BACK_COOLDOWN
+    seconds during which a new step_back cannot trigger.
+
+    freeze has a FREEZE_REFRACTORY period enforced in apply_events; update_npc
+    only needs to tick the freeze timer.
+
     Returns True if step_back movement occurred this step.
     """
     recovery = state.get("recovery", 0.0)
+
+    # Tick refractory and cooldown regardless of other state
+    w.npc_freeze_refractory  = max(0.0, w.npc_freeze_refractory  - dt)
+    w.npc_step_back_cooldown = max(0.0, w.npc_step_back_cooldown - dt)
 
     # Tick freeze timer
     if w.npc_frozen:
@@ -406,20 +658,25 @@ def update_npc(w: World, state: dict, dt: float) -> bool:
         if w.npc_freeze_timer <= 0.0:
             w.npc_frozen = False
 
-    # Delayed step_back: waits for freeze to clear and recovery to ease
+    # step_back: active timer only ticks when recovery gate allows movement.
+    # This preserves the full retreat distance even if recovery delays the start.
     stepped = False
-    if not w.npc_frozen and w.npc_step_back_pending > 0.0 and recovery < STEP_BACK_GATE:
-        move = min(w.npc_step_back_pending, STEP_BACK_RATE * dt)
-        w.npc_x += move   # NPC moves right (away from player on the left)
-        w.npc_step_back_pending -= move
-        stepped = move > 0.01
+    if w.npc_step_back_active > 0.0 and recovery < STEP_BACK_GATE:
+        w.npc_x += STEP_BACK_RATE * dt   # NPC moves right (away from player)
+        w.npc_step_back_active -= dt
+        stepped = True
 
     # Clamp NPC within scene
     w.npc_x = max(200.0, min(SCENE_W - 30.0, w.npc_x))
 
-    # Slow drift back toward home (only when no step_back is pending)
-    if not w.npc_frozen and w.npc_step_back_pending <= 0.0:
-        w.npc_x += (w.npc_home_x - w.npc_x) * 0.003
+    # Drift logic: home pull when outside comfort zone; mild outward correction inside it.
+    # Keeps NPC from drifting toward a player who is already too close.
+    if not w.npc_frozen and w.npc_step_back_active <= 0.0:
+        if w.distance < COMFORT_DISTANCE:
+            encroachment = (COMFORT_DISTANCE - w.distance) / COMFORT_DISTANCE
+            w.npc_x += COMFORT_RATE * encroachment * dt
+        else:
+            w.npc_x += (w.npc_home_x - w.npc_x) * 0.003
 
     return stepped
 
@@ -453,9 +710,11 @@ def loop_step(w: World, script, echoloop: EchoLoopState,
     npc_responded    = any(a == "response"   for a in actions)
     npc_stepped_back = any(a == "step_back"  for a in actions)
     npc_gaze_active  = w.gaze_snap > 0
+    npc_nodded       = any(a == "micro_nod"  for a in actions)
 
     speaking, vx, energy = script.update(
-        w, w.npc_frozen, npc_responded, npc_stepped_back, npc_gaze_active, SIM_DT
+        w, w.npc_frozen, npc_responded, npc_stepped_back, npc_gaze_active, SIM_DT,
+        npc_nodded=npc_nodded,
     )
 
     w.player_x = max(20.0, min(SCENE_W - 20.0, w.player_x + vx * SIM_DT))
@@ -507,10 +766,11 @@ _LOG_FIELDS = [
 ]
 
 
-def open_log(scenario: str):
+def open_log(scenario: str, variant: str = "baseline"):
     log_dir = os.path.join(_HERE, "outputs", "logs")
     os.makedirs(log_dir, exist_ok=True)
-    path = os.path.join(log_dir, f"{scenario}_world_loop.csv")
+    suffix = f"_{variant}" if variant != "baseline" else ""
+    path = os.path.join(log_dir, f"{scenario}{suffix}_world_loop.csv")
     f    = open(path, "w", newline="")
     wtr  = csv.DictWriter(f, fieldnames=_LOG_FIELDS)
     wtr.writeheader()
@@ -813,11 +1073,16 @@ def _draw_hud(screen, fonts, w: World, speed: float,
 
 # ── Main demo ─────────────────────────────────────────────────────────────────
 
-def run(scenario: str, speed: float, record: bool):
-    script_cls = PLAYER_SCRIPTS.get(scenario)
-    if script_cls is None:
+def run(scenario: str, speed: float, record: bool,
+        variant: str = "baseline", seed: int = 7):
+    variant_map = PLAYER_SCRIPTS.get(scenario)
+    if variant_map is None:
         print(f"Unknown scenario: {scenario!r}")
         print(f"Available: {list(PLAYER_SCRIPTS)}")
+        sys.exit(1)
+    script_cls = variant_map.get(variant)
+    if script_cls is None:
+        print(f"Unknown variant: {variant!r}  (available: {list(variant_map)})")
         sys.exit(1)
 
     rec_dir = None
@@ -827,8 +1092,9 @@ def run(scenario: str, speed: float, record: bool):
 
     pygame.init()
     screen = pygame.display.set_mode((W, H))
+    variant_label = f"  [{variant}  seed={seed}]" if variant != "baseline" else ""
     pygame.display.set_caption(
-        f"EchoLoop v0.1 – Closed-Loop Demo  ·  {scenario}  ·  ×{speed}"
+        f"EchoLoop v0.1 – Closed-Loop Demo  ·  {scenario}  ·  ×{speed}{variant_label}"
     )
     clock = pygame.time.Clock()
     fonts = {
@@ -838,13 +1104,13 @@ def run(scenario: str, speed: float, record: bool):
 
     # ── Per-run state factory ─────────────────────────────────────────
     def fresh():
-        w       = World()
+        w = World()
         w.distance = abs(w.player_x - w.npc_x)
-        return (w, script_cls(), EchoLoopState(seed=42),
+        return (w, script_cls(seed=seed), EchoLoopState(seed=42),
                 LabelTracker(), random.Random(99))
 
     w, script, echoloop, tracker, rng = fresh()
-    log_f, log_wtr, log_path = open_log(scenario)
+    log_f, log_wtr, log_path = open_log(scenario, variant)
     print(f"[demo] Logging to {log_path}")
 
     paused   = False
@@ -944,8 +1210,16 @@ def main():
         "--record", action="store_true",
         help="Save PNG frames to outputs/recordings/world_loop_demo/",
     )
+    ap.add_argument(
+        "--variant", default="baseline", choices=["baseline", "loose"],
+        help="Player script variant: baseline (default) or loose",
+    )
+    ap.add_argument(
+        "--seed", type=int, default=7,
+        help="RNG seed for the player script (default: 7; most visible in --variant loose)",
+    )
     args = ap.parse_args()
-    run(args.scenario, args.speed, args.record)
+    run(args.scenario, args.speed, args.record, args.variant, args.seed)
 
 
 if __name__ == "__main__":
