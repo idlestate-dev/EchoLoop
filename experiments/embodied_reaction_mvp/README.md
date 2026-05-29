@@ -147,6 +147,127 @@ This compression-then-release pattern is not scripted. It is a consequence of th
 
 ---
 
+## Closed-loop world interaction demo
+
+`world_loop_demo.py` runs a minimal 2D closed-loop interaction between a scripted player and EchoLoop:
+
+```
+observation → EchoLoop → action → world update → new observation → …
+```
+
+This is **separate from the log playback viewer** (`viewer_2d.py`).  The viewer replays existing logs; the world demo runs the simulation live and feeds EchoLoop outputs back into the world.
+
+**What it demonstrates:**
+
+The player script reacts only to NPC-visible signals (`frozen`, `step_back`, `response_ready`, `gaze_active`) — no access to EchoLoop internals. Two interaction phases emerge:
+
+**Phase 1 — initial approach:**
+
+- Player speaks while stationary → `gaze_shift` fires
+- Player rushes at 65 px/s → freeze fires (av_norm ≈ 2.6)
+- NPC step_back executes after recovery gate clears (~0.7s delay)
+- Player detects step_back → backs off 14px (distance increases → av_norm drops to 0)
+- Silence accumulates during hesitate/back_off → `ttp` rises → `response_ready` fires
+- Player re-engages with speech as soon as response_ready is detected
+
+**Phase 2 — reactive cycling:**
+
+- Player re-approaches at 30 px/s (slower, silent — av_norm ≈ 0.14)
+- Residual freeze_val from phase 1 is still non-zero → freeze fires at ~0.4s into approach
+- Player backs off again; player then re-speaks; cycle continues
+- Each retreat changes the next distance observation → approach_velocity drops → freeze_val decays briefly
+- `response_ready` fires occasionally when silence windows are long enough for ttp to crest
+
+The full loop:
+
+```
+approach → [freeze] → step_back → back_off (distance ↑, av_norm → 0)
+         → speak (silence → ttp) → approach again → [freeze] → …
+```
+
+Freeze rings and recovery aura on the NPC reflect the current suppression state. The timeline strip shows event ticks and player phase. `player_phase` is logged to CSV at every step.
+
+**This is not:**
+- Reinforcement learning (no reward, no learning)
+- Game AI or pathfinding
+- A production NPC system
+- A retune of the model
+
+It is a small diagnostic tool for studying how delayed, suppressed, and released reactions change the world state that feeds the next observation.
+
+**How to run:**
+
+```bash
+cd experiments/embodied_reaction_mvp
+pip install pygame     # if not already installed
+
+python world_loop_demo.py --scenario sudden_approach_while_speaking_closed_loop
+python world_loop_demo.py --scenario sudden_approach_while_speaking_closed_loop --speed 2.0
+python world_loop_demo.py --scenario sudden_approach_while_speaking_closed_loop --record
+```
+
+Keys during playback: `SPACE` pause/resume · `R` restart · `Q`/`ESC` quit.
+
+A CSV log is saved to `outputs/logs/<scenario>_world_loop.csv` on each run, recording positions, approach velocity, path values, events, and NPC actions at each step.
+
+---
+
+## 2D playback viewer
+
+`viewer_2d.py` is a separate diagnostic tool that replays existing simulation logs as a real-time 2D animation.  It does not re-run or modify the model — it reads from `outputs/logs/` and maps path values to visual cues.
+
+**What it shows:**
+
+- NPC and Player dots; Player moves closer during approach events (driven by the logged `approach_velocity` signal)
+- Gaze arrow from NPC toward Player — brightens and extends when `gaze_shift` fires, then dims
+- NPC body radius grows with `settle`; jitter magnitude decreases as `fidget_inhibit` rises
+- Freeze rings expand outward when `freeze` fires; orange recovery aura around NPC reflects backpressure
+- Event labels appear near NPC on each firing and fade out over ~2.5 s
+- Speech waveform above Player dot when `user_speaking` is active
+- Six internal-state bars on the right: orient, settle, fidget inh, ttp, recovery, freeze
+- ttp bar flashes when `response_ready` fires
+- Timeline strip at the bottom: event ticks, ttp and recovery signal lines, current-time cursor
+
+**Requirements:**
+
+```bash
+pip install pygame     # or: pip install pygame-ce
+```
+
+**How to run:**
+
+```bash
+cd experiments/embodied_reaction_mvp
+
+# recommended starting scenario — shows freeze → suppression → delayed release
+python viewer_2d.py --scenario sudden_approach_while_speaking
+
+# speech onset → gaze_shift, sustained speech → settle, silence → ttp pressure
+python viewer_2d.py --scenario speech_then_silence
+
+# slower or faster playback
+python viewer_2d.py --scenario sudden_approach_while_speaking --speed 0.5
+python viewer_2d.py --scenario sudden_approach_while_speaking --speed 2.0
+
+# save PNG frames to outputs/recordings/<scenario>/
+python viewer_2d.py --scenario sudden_approach_while_speaking --record
+```
+
+Keys during playback: `SPACE` pause/resume · `R` restart · `Q`/`ESC` quit.
+
+If logs for the requested scenario are not found, the viewer runs the simulation first and saves them.
+
+**Recording note:** `--record` saves one PNG frame per display frame.  To convert frames to a GIF or video after recording:
+
+```bash
+# example with ffmpeg
+ffmpeg -r 60 -i outputs/recordings/sudden_approach_while_speaking/frame_%05d.png output.gif
+```
+
+GIF export is not built into the viewer in v0.1.
+
+---
+
 ## How to run
 
 ```bash
@@ -216,7 +337,9 @@ plotting.py             matplotlib visualizations
 run_simulation.py       CLI runner — logs, plots, reports
 diagnostics.py          per-scenario diagnostic report generator
 check_response_dynamics.py  response_ready timing analysis across scenarios
-requirements.txt        numpy, matplotlib
+viewer_2d.py            2D playback viewer (pygame, reads logs from outputs/logs/)
+world_loop_demo.py      closed-loop world interaction demo (pygame, runs EchoLoop live)
+requirements.txt        numpy, matplotlib  (pygame optional, for viewer_2d.py and world_loop_demo.py)
 CHANGELOG.md            version history
 RESULTS_v0.1.md         full v0.1 results, analysis, and roadmap
 ```
