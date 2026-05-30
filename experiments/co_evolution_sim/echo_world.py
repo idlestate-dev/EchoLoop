@@ -964,18 +964,370 @@ def plot_evolution_control(coevo_data, readout_only_data,
     plt.close()
 
 
+def run_world_association_experiment(n_episodes=10, N=25, K=10, seed=42,
+                                     temperature=0.5, n_propagation_steps=3):
+    """Association experiment: single food at (0,0). Does Hebbian learning link
+    north-movement activity with food-proximity activity across episodes?"""
+    FOOD_POS = (0, 0)          # fixed north-west only
+    GRID = 5
+    HP_MAX, HP_DECAY, FOOD_VAL, FOOD_RESPAWN, MAX_STEPS = 200, 1, 30, 30, 500
+    START_HP, START_POS = 100, (2, 2)
+
+    rng = np.random.default_rng(seed)
+    G = _make_graph(N, rng)
+    activity = np.zeros(N)
+
+    north_acts = []        # activity[4:20] whenever action==0
+    near_food_acts = []    # activity[4:20] whenever manhattan dist to food < 2
+    eat_acts = []          # activity[4:20] whenever eating
+    all_acts = []          # activity[4:20] every step (for heatmap)
+    episode_boundaries = []
+
+    episode_food_eaten = []
+    episode_steps_survived = []
+
+    for ep in range(n_episodes):
+        row, col = START_POS
+        hp = START_HP
+        food_available = True
+        food_timer = 0
+        food_eaten = 0
+        steps_survived = 0
+
+        for step in range(MAX_STEPS):
+            if hp <= 0:
+                break
+
+            input_vals = {
+                0: col / (GRID - 1),
+                1: row / (GRID - 1),
+                2: hp / HP_MAX,
+                3: 1.0 if food_available else 0.0,
+            }
+
+            for _ in range(n_propagation_steps):
+                new_act = np.zeros(N)
+                for i in range(N):
+                    if i in input_vals:
+                        new_act[i] = input_vals[i]
+                    else:
+                        s = sum(G[j][i]['weight'] * activity[j] for j in G.predecessors(i))
+                        new_act[i] = np.tanh(s)
+                activity[:] = new_act
+
+            all_acts.append(activity[4:20].copy())
+
+            action = _softmax_sample(activity[20:25], temperature=temperature)
+
+            if action == 0:
+                north_acts.append(activity[4:20].copy())
+
+            dist = abs(row - FOOD_POS[0]) + abs(col - FOOD_POS[1])
+            if dist < 2:
+                near_food_acts.append(activity[4:20].copy())
+
+            if action == 0:
+                row = max(0, row - 1)
+            elif action == 1:
+                row = min(GRID - 1, row + 1)
+            elif action == 2:
+                col = max(0, col - 1)
+            elif action == 3:
+                col = min(GRID - 1, col + 1)
+            elif action == 4:
+                if row == FOOD_POS[0] and col == FOOD_POS[1] and food_available:
+                    hp = min(HP_MAX, hp + FOOD_VAL)
+                    food_available = False
+                    food_timer = 0
+                    food_eaten += 1
+                    eat_acts.append(activity[4:20].copy())
+
+            hp -= HP_DECAY
+            steps_survived = step + 1
+
+            if not food_available:
+                food_timer += 1
+                if food_timer >= FOOD_RESPAWN:
+                    food_available = True
+                    food_timer = 0
+
+            if (step + 1) % K == 0:
+                _hebbian_step(G, activity, N, rng)
+
+        episode_food_eaten.append(food_eaten)
+        episode_steps_survived.append(steps_survived)
+        episode_boundaries.append(len(all_acts))
+        print(f'Episode {ep + 1}:  food eaten: {food_eaten},  steps survived: {steps_survived}')
+
+    print()
+
+    all_acts_arr = np.array(all_acts) if all_acts else np.zeros((1, 16))  # (T, 16)
+
+    def _associated(cond_acts, threshold=0.5):
+        if not cond_acts:
+            return []
+        arr = np.array(cond_acts)
+        frac = (arr > 0.5).mean(axis=0)
+        return [i + 4 for i in range(16) if frac[i] > threshold]
+
+    north_nodes = _associated(north_acts)
+    food_nodes  = _associated(near_food_acts)
+    overlapping = sorted(set(north_nodes) & set(food_nodes))
+
+    def _cross_edges(a_set, b_set):
+        return [(u, v) for u in a_set for v in b_set
+                if u != v and (G.has_edge(u, v) or G.has_edge(v, u))]
+
+    cross = _cross_edges(set(north_nodes), set(food_nodes))
+    cross_count = len(cross)
+
+    # Baseline: random node-pair sets of same size
+    internal = list(range(4, 20))
+    n_n = max(1, len(north_nodes))
+    n_f = max(1, len(food_nodes))
+    baseline_vals = []
+    for _ in range(200):
+        rn = list(rng.choice(internal, size=n_n, replace=False))
+        rf = list(rng.choice(internal, size=n_f, replace=False))
+        baseline_vals.append(len(_cross_edges(set(rn), set(rf))))
+    baseline_mean = float(np.mean(baseline_vals))
+
+    association_emerged = cross_count > baseline_mean * 1.5
+
+    print('Topology analysis after 10 episodes:')
+    print(f'  North-associated nodes: {north_nodes}')
+    print(f'  Food-associated nodes:  {food_nodes}')
+    print(f'  Overlapping nodes:      {overlapping}')
+    print(f'  Cross-edges (north↔food): {cross_count}')
+    print(f'  Baseline cross-edges (random pairs): {baseline_mean:.1f}')
+    print(f'  Association emerged: {association_emerged} '
+          f'(cross-edges > baseline * 1.5)')
+
+    return {
+        'all_acts': all_acts_arr,
+        'episode_boundaries': episode_boundaries,
+        'episode_food_eaten': episode_food_eaten,
+        'episode_steps': episode_steps_survived,
+        'north_nodes': north_nodes,
+        'food_nodes': food_nodes,
+        'overlapping': overlapping,
+        'cross_count': cross_count,
+        'baseline_mean': baseline_mean,
+        'association_emerged': association_emerged,
+        'G_final': G,
+        'N': N,
+    }
+
+
+def plot_world_association(data, fname='images/results_world_association.png'):
+    from matplotlib.patches import Patch
+
+    all_acts = data['all_acts']        # (T, 16)
+    north_nodes = data['north_nodes']
+    food_nodes  = data['food_nodes']
+    overlapping = data['overlapping']
+    G_final = data['G_final']
+    boundaries = data['episode_boundaries']
+
+    fig, axes = plt.subplots(2, 1, figsize=(14, 12), squeeze=False)
+    fig.suptitle('World Association Experiment  (food fixed at (0,0))', fontsize=13)
+
+    # Row 1: activity heatmap  (16 nodes × timesteps)
+    ax = axes[0][0]
+    hmap = all_acts.T          # (16, T)
+    T = hmap.shape[1]
+    # Downsample columns for display if very long
+    MAX_COLS = 1000
+    if T > MAX_COLS:
+        bin_size = T // MAX_COLS
+        hmap = np.array([hmap[:, k*bin_size:(k+1)*bin_size].mean(axis=1)
+                         for k in range(MAX_COLS)]).T
+        scale = T / MAX_COLS
+    else:
+        scale = 1.0
+
+    im = ax.imshow(hmap, aspect='auto', origin='lower', cmap='hot',
+                   interpolation='nearest', vmin=0, vmax=1)
+    plt.colorbar(im, ax=ax, fraction=0.02, pad=0.01, label='Mean activity')
+    ax.set_ylabel('Internal node (4–19)', fontsize=10)
+    ax.set_xlabel('Timestep', fontsize=10)
+    ax.set_title('Activity heatmap — internal nodes over all episode steps', fontsize=10)
+    ax.set_yticks(range(16))
+    ax.set_yticklabels([str(i + 4) for i in range(16)], fontsize=7)
+    for b in boundaries[:-1]:
+        ax.axvline(b / scale, color='cyan', linewidth=0.8, alpha=0.6)
+
+    # Row 2: topology — internal nodes subgraph
+    ax = axes[1][0]
+    ax.set_title(
+        'Final topology  — blue: north-assoc, red: food-assoc, purple: both  '
+        '(thick edges = cross-edges)',
+        fontsize=10,
+    )
+
+    H = G_final.subgraph(range(4, 20)).copy()
+    north_set = set(north_nodes)
+    food_set  = set(food_nodes)
+    over_set  = set(overlapping)
+
+    node_colors = []
+    for n in H.nodes():
+        if n in over_set:
+            node_colors.append('mediumpurple')
+        elif n in north_set:
+            node_colors.append('steelblue')
+        elif n in food_set:
+            node_colors.append('tomato')
+        else:
+            node_colors.append('lightgray')
+
+    edge_colors = []
+    edge_widths = []
+    for u, v in H.edges():
+        if (u in north_set and v in food_set) or (u in food_set and v in north_set):
+            edge_colors.append('mediumpurple')
+            edge_widths.append(3.5)
+        else:
+            edge_colors.append('#cccccc')
+            edge_widths.append(0.5)
+
+    pos = nx.spring_layout(H, seed=42)
+    nx.draw_networkx(
+        H, pos=pos, ax=ax,
+        node_color=node_colors, node_size=500,
+        edge_color=edge_colors, width=edge_widths,
+        arrows=True, arrowsize=12,
+        font_size=8, font_color='black',
+    )
+
+    legend_elements = [
+        Patch(facecolor='steelblue',    label='North-associated'),
+        Patch(facecolor='tomato',       label='Food-associated'),
+        Patch(facecolor='mediumpurple', label='Overlapping'),
+        Patch(facecolor='lightgray',    label='Neither'),
+    ]
+    ax.legend(handles=legend_elements, fontsize=8, loc='upper right')
+    ax.axis('off')
+
+    assoc_str = str(data['association_emerged'])
+    txt_color = 'darkgreen' if data['association_emerged'] else 'firebrick'
+    fig.text(
+        0.5, 0.01,
+        f'Association emerged: {assoc_str}  '
+        f'(cross-edges={data["cross_count"]}  vs  baseline={data["baseline_mean"]:.1f})',
+        ha='center', fontsize=10, color=txt_color,
+    )
+
+    plt.tight_layout(rect=[0, 0.04, 1, 1])
+    plt.savefig(fname, dpi=150, bbox_inches='tight')
+    print(f'Saved {fname}')
+    plt.close()
+
+
+# ─── Session 4: Context interference environment ──────────────────────────────
+
+
+class ContextGridWorld:
+    """GridWorld where food position depends on episode context (A=NW, B=SE)."""
+    grid_size = 5
+    hp_max = 200
+    hp_decay = 1
+    food_value = 30
+    food_respawn = 40
+    max_steps = 500
+    start_pos = (2, 2)
+    start_hp = 100
+
+
+def _run_context_episode(G, activity, rng, N=20, K=10, n_propagation_steps=3,
+                          temperature=1.0, readout_weights=None,
+                          topology_frozen=False, mode=None):
+    """ContextGridWorld episode. mode='A' → food at (0,0), 'B' → food at (4,4), None → random."""
+    gw = ContextGridWorld()
+    if mode is None:
+        mode = 'A' if rng.random() < 0.5 else 'B'
+    food_pos = (0, 0) if mode == 'A' else (4, 4)
+    food_available = [True]
+    food_timers = [0]
+
+    row, col = gw.start_pos
+    hp = gw.start_hp
+    food_eaten = 0
+    total_delta = 0.0
+    steps_survived = 0
+
+    for step in range(gw.max_steps):
+        if hp <= 0:
+            break
+
+        input_vals = {
+            0: col / (gw.grid_size - 1),
+            1: row / (gw.grid_size - 1),
+            2: hp / gw.hp_max,
+            3: 1.0 if food_available[0] else 0.0,
+        }
+
+        for _ in range(n_propagation_steps):
+            new_activity = np.zeros(N)
+            for i in range(N):
+                if i in input_vals:
+                    new_activity[i] = input_vals[i]
+                else:
+                    s = sum(G[j][i]['weight'] * activity[j] for j in G.predecessors(i))
+                    new_activity[i] = np.tanh(s)
+            activity[:] = new_activity
+
+        if readout_weights is not None:
+            action = _softmax_sample(activity[4:20] @ readout_weights,
+                                     temperature=temperature)
+        else:
+            action = int(rng.integers(0, 5))
+
+        fr, fc = food_pos
+        if action == 0:
+            row = max(0, row - 1)
+        elif action == 1:
+            row = min(gw.grid_size - 1, row + 1)
+        elif action == 2:
+            col = max(0, col - 1)
+        elif action == 3:
+            col = min(gw.grid_size - 1, col + 1)
+        elif action == 4:
+            if row == fr and col == fc and food_available[0]:
+                hp = min(gw.hp_max, hp + gw.food_value)
+                food_available[0] = False
+                food_timers[0] = 0
+                food_eaten += 1
+
+        hp -= gw.hp_decay
+        steps_survived = step + 1
+        if not food_available[0]:
+            food_timers[0] += 1
+            if food_timers[0] >= gw.food_respawn:
+                food_available[0] = True
+                food_timers[0] = 0
+
+        if not topology_frozen and (step + 1) % K == 0:
+            total_delta += _hebbian_step(G, activity, N, rng)
+
+    return steps_survived, total_delta, G.number_of_edges(), food_eaten, mode
+
+
 if __name__ == '__main__':
-    coevo_data = run_coevolution_experiment()
-    plot_coevolution_results(coevo_data)
+    assoc_data = run_world_association_experiment()
+    plot_world_association(assoc_data)
 
-    readout_only_data = run_evolution_readout_only()
+    # coevo_data = run_coevolution_experiment()
+    # plot_coevolution_results(coevo_data)
 
-    print('\n=== Comparison at generation 50 ===')
-    print(f'Co-evolution mean survival:  {coevo_data["gen_mean_survival"][-1]:.0f}')
-    print(f'Readout-only mean survival:  {readout_only_data["gen_mean_survival"][-1]:.0f}')
-    print(f'Random baseline:             {coevo_data["rand_baseline_mean"]:.0f}')
-    hebbian_contributes = (coevo_data['gen_mean_survival'][-1] >
-                           readout_only_data['gen_mean_survival'][-1] * 1.1)
-    print(f'Hebbian topology change contributes: {hebbian_contributes}')
+    # readout_only_data = run_evolution_readout_only()
 
-    plot_evolution_control(coevo_data, readout_only_data)
+    # print('\n=== Comparison at generation 50 ===')
+    # print(f'Co-evolution mean survival:  {coevo_data["gen_mean_survival"][-1]:.0f}')
+    # print(f'Readout-only mean survival:  {readout_only_data["gen_mean_survival"][-1]:.0f}')
+    # print(f'Random baseline:             {coevo_data["rand_baseline_mean"]:.0f}')
+    # hebbian_contributes = (coevo_data['gen_mean_survival'][-1] >
+    #                        readout_only_data['gen_mean_survival'][-1] * 1.1)
+    # print(f'Hebbian topology change contributes: {hebbian_contributes}')
+
+    # plot_evolution_control(coevo_data, readout_only_data)
