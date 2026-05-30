@@ -2608,6 +2608,684 @@ def plot_fixed_topology_control(res_A, res_B):
     plt.close()
 
 
+def run_pattern_encoding_experiment(K=10, T_pretrain=2000, T_encode=1000, T_test=500,
+                                     N=20, seed=42):
+    PATTERN_SWITCH = 100
+
+    rng = np.random.default_rng(seed)
+
+    G = nx.DiGraph()
+    G.add_nodes_from(range(N))
+    for i in range(N):
+        for j in range(N):
+            if i != j and rng.random() < 0.2:
+                G.add_edge(i, j, weight=rng.random())
+
+    activity = np.zeros(N)
+    activity[0] = 0.5
+
+    def _hebbian_step(G, activity, rng):
+        edges_to_remove = []
+        for i, j, data in list(G.edges(data=True)):
+            w = data['weight']
+            if activity[i] > 0.5 and activity[j] > 0.5:
+                w += 0.05
+            w -= 0.01
+            if w < 0.01:
+                edges_to_remove.append((i, j))
+            else:
+                G[i][j]['weight'] = min(w, 1.0)
+        G.remove_edges_from(edges_to_remove)
+        existing = set(G.edges())
+        for i in range(N):
+            for j in range(N):
+                if i != j and (i, j) not in existing and rng.random() < 0.01:
+                    G.add_edge(i, j, weight=0.05)
+
+    # Phase 1: Pretrain with alternating X/Y
+    train_timesteps = []
+    train_act_node0, train_act_node1, train_act_node2 = [], [], []
+    train_num_edges, train_mean_weight, train_act_variance = [], [], []
+
+    for t in range(T_pretrain):
+        block = t // PATTERN_SWITCH
+        if block % 2 == 0:
+            ext = {0: 0.8, 1: 0.8, 2: 0.0}
+        else:
+            ext = {0: 0.8, 1: 0.0, 2: 0.8}
+        new_activity = np.zeros(N)
+        for i in range(N):
+            s = sum(G[j][i]['weight'] * activity[j] for j in G.predecessors(i))
+            new_activity[i] = np.tanh(s)
+        for node, val in ext.items():
+            new_activity[node] = val
+        activity = new_activity
+        if (t + 1) % K == 0:
+            _hebbian_step(G, activity, rng)
+            weights = [d['weight'] for _, _, d in G.edges(data=True)]
+            train_timesteps.append(t + 1)
+            train_act_node0.append(float(activity[0]))
+            train_act_node1.append(float(activity[1]))
+            train_act_node2.append(float(activity[2]))
+            train_num_edges.append(G.number_of_edges())
+            train_mean_weight.append(float(np.mean(weights)) if weights else 0.0)
+            train_act_variance.append(float(np.var(activity)))
+
+    G_pretrain = G.copy()
+    act_pretrain = activity.copy()
+    print(f'Pretrain complete (T={T_pretrain}, alternating X/Y, '
+          f'{G_pretrain.number_of_edges()} edges).')
+
+    # Phase 2a: Encode X-only from pretrained topology.
+    # Edges into node 2 (inactive in X) will decay and be deleted.
+    G_X = G_pretrain.copy()
+    act = act_pretrain.copy()
+    rng_X = np.random.default_rng(seed + 1)
+    for t in range(T_encode):
+        new_act = np.zeros(N)
+        for i in range(N):
+            s = sum(G_X[j][i]['weight'] * act[j] for j in G_X.predecessors(i))
+            new_act[i] = np.tanh(s)
+        new_act[0], new_act[1], new_act[2] = 0.8, 0.8, 0.0
+        act = new_act
+        if (t + 1) % K == 0:
+            _hebbian_step(G_X, act, rng_X)
+    print(f'X-only encoding complete ({G_X.number_of_edges()} edges remaining).')
+
+    # Phase 2b: Encode Y-only from the same pretrained topology (separate copy).
+    # Edges into node 1 (inactive in Y) will decay and be deleted.
+    G_Y = G_pretrain.copy()
+    act = act_pretrain.copy()
+    rng_Y = np.random.default_rng(seed + 2)
+    for t in range(T_encode):
+        new_act = np.zeros(N)
+        for i in range(N):
+            s = sum(G_Y[j][i]['weight'] * act[j] for j in G_Y.predecessors(i))
+            new_act[i] = np.tanh(s)
+        new_act[0], new_act[1], new_act[2] = 0.8, 0.0, 0.8
+        act = new_act
+        if (t + 1) % K == 0:
+            _hebbian_step(G_Y, act, rng_Y)
+    print(f'Y-only encoding complete ({G_Y.number_of_edges()} edges remaining).')
+
+    # Test: zero initial activity, food probe only, topology frozen
+    def _run_test(test_G):
+        act = np.zeros(N)
+        node1_trace, node2_trace = [], []
+        internal_traces = [[] for _ in range(3, N)]
+        for _ in range(T_test):
+            new_act = np.zeros(N)
+            for i in range(N):
+                s = sum(test_G[j][i]['weight'] * act[j] for j in test_G.predecessors(i))
+                new_act[i] = np.tanh(s)
+            new_act[0] = 0.5   # food probe — nodes 1 and 2 evolve freely
+            act = new_act
+            node1_trace.append(float(act[1]))
+            node2_trace.append(float(act[2]))
+            for idx, node in enumerate(range(3, N)):
+                internal_traces[idx].append(float(act[node]))
+        return node1_trace, node2_trace, internal_traces
+
+    node1_X, node2_X, internal_X = _run_test(G_X)
+    mean_n1_X = float(np.mean(node1_X))
+    mean_n2_X = float(np.mean(node2_X))
+    bias_X = mean_n1_X - mean_n2_X
+    print(
+        f'\nTest after X:\n'
+        f'  mean activity node 1 (north): {mean_n1_X:.4f}\n'
+        f'  mean activity node 2 (south): {mean_n2_X:.4f}\n'
+        f'  bias toward north: {bias_X:.4f} (positive = north, negative = south)'
+    )
+
+    node1_Y, node2_Y, internal_Y = _run_test(G_Y)
+    mean_n1_Y = float(np.mean(node1_Y))
+    mean_n2_Y = float(np.mean(node2_Y))
+    bias_Y = mean_n2_Y - mean_n1_Y
+    print(
+        f'\nTest after Y:\n'
+        f'  mean activity node 1 (north): {mean_n1_Y:.4f}\n'
+        f'  mean activity node 2 (south): {mean_n2_Y:.4f}\n'
+        f'  bias toward south: {bias_Y:.4f} (positive = south, negative = north)'
+    )
+
+    encoding_detected = bias_X > 0 and bias_Y > 0
+    print(f'\nPattern encoding detected: {encoding_detected}')
+
+    return {
+        'node1_X': node1_X, 'node2_X': node2_X, 'internal_X': internal_X,
+        'node1_Y': node1_Y, 'node2_Y': node2_Y, 'internal_Y': internal_Y,
+        'mean_n1_X': mean_n1_X, 'mean_n2_X': mean_n2_X,
+        'mean_n1_Y': mean_n1_Y, 'mean_n2_Y': mean_n2_Y,
+        'train_timesteps': train_timesteps,
+        'train_act_node0': train_act_node0,
+        'train_act_node1': train_act_node1,
+        'train_act_node2': train_act_node2,
+        'train_num_edges': train_num_edges,
+        'train_mean_weight': train_mean_weight,
+        'train_act_variance': train_act_variance,
+        'T_pretrain': T_pretrain,
+        'T_encode': T_encode,
+        'T_test': T_test,
+        'N': N,
+    }
+
+
+def plot_pattern_encoding(data):
+    N = data['N']
+    T_test = data['T_test']
+    T_encode = data['T_encode']
+    test_ts = list(range(1, T_test + 1))
+
+    fig, axes = plt.subplots(3, 2, figsize=(11, 12), squeeze=False)
+    fig.suptitle(
+        f'Pattern encoding test (K=10, T_pretrain={data["T_pretrain"]}, '
+        f'T_encode={T_encode}, T_test={T_test})',
+        fontsize=13,
+    )
+    axes[0][0].set_title(f'Test after X  (X-only encoding, T={T_encode})', fontsize=10)
+    axes[0][1].set_title(f'Test after Y  (Y-only encoding, T={T_encode})', fontsize=10)
+
+    # Row 1: node 1 and node 2 activity traces
+    for col, (n1, n2) in enumerate([
+        (data['node1_X'], data['node2_X']),
+        (data['node1_Y'], data['node2_Y']),
+    ]):
+        axes[0][col].plot(test_ts, n1, label='Node 1 (north)', color='steelblue')
+        axes[0][col].plot(test_ts, n2, label='Node 2 (south)', color='tomato')
+        axes[0][col].set_ylabel('Activity', fontsize=9)
+        axes[0][col].legend(fontsize=8)
+        axes[0][col].grid(True, alpha=0.3)
+
+    # Row 2: internal node (3–19) activity traces
+    for col, internal in enumerate([data['internal_X'], data['internal_Y']]):
+        for trace in internal:
+            axes[1][col].plot(test_ts, trace, alpha=0.4, linewidth=0.7)
+        axes[1][col].set_ylabel('Activity (nodes 3–19)', fontsize=9)
+        axes[1][col].grid(True, alpha=0.3)
+
+    # Row 3: bar chart of mean node 1 vs node 2
+    bar_labels = ['North\n(node 1)', 'South\n(node 2)']
+    for col, (mn1, mn2) in enumerate([
+        (data['mean_n1_X'], data['mean_n2_X']),
+        (data['mean_n1_Y'], data['mean_n2_Y']),
+    ]):
+        axes[2][col].bar(bar_labels, [mn1, mn2],
+                         color=['steelblue', 'tomato'], alpha=0.8, width=0.5)
+        axes[2][col].set_ylabel('Mean activity', fontsize=9)
+        axes[2][col].set_ylim(0, max(mn1, mn2) * 1.25 + 1e-6)
+        axes[2][col].grid(True, alpha=0.3, axis='y')
+
+    plt.tight_layout()
+    fname = 'images/results_pattern_encoding.png'
+    plt.savefig(fname, dpi=150, bbox_inches='tight')
+    print(f'Saved {fname}')
+    plt.close()
+
+
+def plot_pattern_encoding_training(data):
+    T_pretrain = data['T_pretrain']
+    ts = data['train_timesteps']
+    switches = list(range(100, T_pretrain, 100))
+
+    fig, axes = plt.subplots(4, 1, figsize=(12, 14), squeeze=False)
+    fig.suptitle(
+        f'Pattern encoding — pretrain dynamics (K=10, T={T_pretrain}, alternating X/Y)',
+        fontsize=13,
+    )
+
+    # Row 1: activity of nodes 0, 1, 2
+    axes[0][0].plot(ts, data['train_act_node0'], label='Node 0 (food)', color='seagreen')
+    axes[0][0].plot(ts, data['train_act_node1'], label='Node 1 (north)', color='steelblue')
+    axes[0][0].plot(ts, data['train_act_node2'], label='Node 2 (south)', color='tomato')
+    axes[0][0].set_ylabel('Activity', fontsize=9)
+    axes[0][0].legend(fontsize=8)
+    axes[0][0].grid(True, alpha=0.3)
+
+    # Row 2: number of edges
+    axes[1][0].plot(ts, data['train_num_edges'], color='steelblue')
+    axes[1][0].set_ylabel('Number of edges', fontsize=9)
+    axes[1][0].grid(True, alpha=0.3)
+
+    # Row 3: mean edge weight
+    axes[2][0].plot(ts, data['train_mean_weight'], color='seagreen')
+    axes[2][0].set_ylabel('Mean edge weight', fontsize=9)
+    axes[2][0].grid(True, alpha=0.3)
+
+    # Row 4: activity variance
+    axes[3][0].plot(ts, data['train_act_variance'], color='dimgray')
+    axes[3][0].set_ylabel('Activity variance', fontsize=9)
+    axes[3][0].set_xlabel('Training timestep', fontsize=8)
+    axes[3][0].grid(True, alpha=0.3)
+
+    # Pattern switch vertical lines and X/Y shading on all axes
+    for ax in axes[:, 0]:
+        for sw in switches:
+            ax.axvline(sw, color='gray', linestyle='--', alpha=0.25, linewidth=0.8)
+
+    # X/Y block labels on the top axis only (every other block to reduce clutter)
+    ax_top = axes[0][0]
+    block_edges = [0] + switches + [T_pretrain]
+    for b in range(0, len(block_edges) - 1, 2):  # every 2 blocks
+        left, right = block_edges[b], block_edges[b + 1]
+        mid = (left + right) / 2
+        label = 'X' if (b // 1) % 2 == 0 else 'Y'
+        ax_top.text(mid, 1.01, label, ha='center', va='bottom',
+                    transform=ax_top.get_xaxis_transform(),
+                    fontsize=6, color='dimgray')
+
+    plt.tight_layout()
+    fname = 'images/results_pattern_encoding_training.png'
+    plt.savefig(fname, dpi=150, bbox_inches='tight')
+    print(f'Saved {fname}')
+    plt.close()
+
+
+def run_pattern_encoding_experiment_v2(K=10, T_pretrain=2000, T_encode=1000, T_test=500,
+                                        N=20, seed=42):
+    """Same as v1 but adds a no-input control test and confirms node 0 is active in all phases."""
+    PATTERN_SWITCH = 100
+
+    rng = np.random.default_rng(seed)
+
+    G = nx.DiGraph()
+    G.add_nodes_from(range(N))
+    for i in range(N):
+        for j in range(N):
+            if i != j and rng.random() < 0.2:
+                G.add_edge(i, j, weight=rng.random())
+
+    activity = np.zeros(N)
+    activity[0] = 0.5
+
+    def _hebbian_step(G, activity, rng):
+        edges_to_remove = []
+        for i, j, data in list(G.edges(data=True)):
+            w = data['weight']
+            if activity[i] > 0.5 and activity[j] > 0.5:
+                w += 0.05
+            w -= 0.01
+            if w < 0.01:
+                edges_to_remove.append((i, j))
+            else:
+                G[i][j]['weight'] = min(w, 1.0)
+        G.remove_edges_from(edges_to_remove)
+        existing = set(G.edges())
+        for i in range(N):
+            for j in range(N):
+                if i != j and (i, j) not in existing and rng.random() < 0.01:
+                    G.add_edge(i, j, weight=0.05)
+
+    # Phase 1: Pretrain with alternating X/Y (node 0 = 0.8 in both)
+    train_timesteps = []
+    train_act_node0, train_act_node1, train_act_node2 = [], [], []
+    train_num_edges, train_mean_weight, train_act_variance = [], [], []
+    node0_pretrain_first100 = []
+
+    for t in range(T_pretrain):
+        block = t // PATTERN_SWITCH
+        if block % 2 == 0:
+            ext = {0: 0.8, 1: 0.8, 2: 0.0}   # Pattern X
+        else:
+            ext = {0: 0.8, 1: 0.0, 2: 0.8}   # Pattern Y
+        new_activity = np.zeros(N)
+        for i in range(N):
+            s = sum(G[j][i]['weight'] * activity[j] for j in G.predecessors(i))
+            new_activity[i] = np.tanh(s)
+        for node, val in ext.items():
+            new_activity[node] = val
+        activity = new_activity
+        if t < 100:
+            node0_pretrain_first100.append(float(activity[0]))
+        if (t + 1) % K == 0:
+            _hebbian_step(G, activity, rng)
+            weights = [d['weight'] for _, _, d in G.edges(data=True)]
+            train_timesteps.append(t + 1)
+            train_act_node0.append(float(activity[0]))
+            train_act_node1.append(float(activity[1]))
+            train_act_node2.append(float(activity[2]))
+            train_num_edges.append(G.number_of_edges())
+            train_mean_weight.append(float(np.mean(weights)) if weights else 0.0)
+            train_act_variance.append(float(np.var(activity)))
+
+    print(f'Node 0 mean activity (pretrain first 100 steps): '
+          f'{float(np.mean(node0_pretrain_first100)):.4f}')
+
+    G_pretrain = G.copy()
+    act_pretrain = activity.copy()
+    print(f'Pretrain complete (T={T_pretrain}, alternating X/Y, '
+          f'{G_pretrain.number_of_edges()} edges).')
+
+    # Phase 2: X-only encoding (node 0 = 0.8, node 1 = 0.8, node 2 = 0.0)
+    G_X = G_pretrain.copy()
+    act = act_pretrain.copy()
+    rng_X = np.random.default_rng(seed + 1)
+    node0_x_enc = []
+    for t in range(T_encode):
+        new_act = np.zeros(N)
+        for i in range(N):
+            s = sum(G_X[j][i]['weight'] * act[j] for j in G_X.predecessors(i))
+            new_act[i] = np.tanh(s)
+        new_act[0], new_act[1], new_act[2] = 0.8, 0.8, 0.0
+        act = new_act
+        node0_x_enc.append(float(act[0]))
+        if (t + 1) % K == 0:
+            _hebbian_step(G_X, act, rng_X)
+    print(f'Node 0 mean activity (X-only encoding): '
+          f'{float(np.mean(node0_x_enc)):.4f}')
+    print(f'X-only encoding complete ({G_X.number_of_edges()} edges remaining).')
+
+    # Phase 3: Y-only encoding (node 0 = 0.8, node 1 = 0.0, node 2 = 0.8)
+    G_Y = G_pretrain.copy()
+    act = act_pretrain.copy()
+    rng_Y = np.random.default_rng(seed + 2)
+    for t in range(T_encode):
+        new_act = np.zeros(N)
+        for i in range(N):
+            s = sum(G_Y[j][i]['weight'] * act[j] for j in G_Y.predecessors(i))
+            new_act[i] = np.tanh(s)
+        new_act[0], new_act[1], new_act[2] = 0.8, 0.0, 0.8
+        act = new_act
+        if (t + 1) % K == 0:
+            _hebbian_step(G_Y, act, rng_Y)
+    print(f'Y-only encoding complete ({G_Y.number_of_edges()} edges remaining).')
+
+    # Test: zero initial activity, topology frozen, only node 0 varies
+    def _run_test(test_G, node0_val):
+        act = np.zeros(N)
+        node1_trace, node2_trace = [], []
+        internal_traces = [[] for _ in range(3, N)]
+        for _ in range(T_test):
+            new_act = np.zeros(N)
+            for i in range(N):
+                s = sum(test_G[j][i]['weight'] * act[j] for j in test_G.predecessors(i))
+                new_act[i] = np.tanh(s)
+            new_act[0] = node0_val
+            act = new_act
+            node1_trace.append(float(act[1]))
+            node2_trace.append(float(act[2]))
+            for idx, node in enumerate(range(3, N)):
+                internal_traces[idx].append(float(act[node]))
+        return node1_trace, node2_trace, internal_traces
+
+    # Probe: initial hint for nodes 1 and 2, node 0 fixed, topology frozen
+    def _run_probe(test_G, node0_val, node1_init=0.0, node2_init=0.0):
+        act = np.zeros(N)
+        act[0] = node0_val
+        act[1] = node1_init
+        act[2] = node2_init
+        node1_trace, node2_trace = [], []
+        internal_traces = [[] for _ in range(3, N)]
+        for _ in range(T_test):
+            new_act = np.zeros(N)
+            for i in range(N):
+                s = sum(test_G[j][i]['weight'] * act[j] for j in test_G.predecessors(i))
+                new_act[i] = np.tanh(s)
+            new_act[0] = node0_val
+            act = new_act
+            node1_trace.append(float(act[1]))
+            node2_trace.append(float(act[2]))
+            for idx, node in enumerate(range(3, N)):
+                internal_traces[idx].append(float(act[node]))
+        return node1_trace, node2_trace, internal_traces
+
+    node1_X, node2_X, internal_X = _run_test(G_X, node0_val=0.5)
+    mean_n1_X = float(np.mean(node1_X))
+    mean_n2_X = float(np.mean(node2_X))
+    bias_X = mean_n1_X - mean_n2_X
+    print(
+        f'\nTest after X:\n'
+        f'  mean activity node 1 (north): {mean_n1_X:.4f}\n'
+        f'  mean activity node 2 (south): {mean_n2_X:.4f}\n'
+        f'  bias toward north: {bias_X:.4f} (positive = north, negative = south)'
+    )
+
+    node1_Y, node2_Y, internal_Y = _run_test(G_Y, node0_val=0.5)
+    mean_n1_Y = float(np.mean(node1_Y))
+    mean_n2_Y = float(np.mean(node2_Y))
+    bias_Y = mean_n2_Y - mean_n1_Y
+    print(
+        f'\nTest after Y:\n'
+        f'  mean activity node 1 (north): {mean_n1_Y:.4f}\n'
+        f'  mean activity node 2 (south): {mean_n2_Y:.4f}\n'
+        f'  bias toward south: {bias_Y:.4f} (positive = south, negative = north)'
+    )
+
+    # Control: no input (node 0 = 0.0) — confirms responses are input-driven
+    node1_ctrl, node2_ctrl, internal_ctrl = _run_test(G_X, node0_val=0.0)
+    mean_n1_ctrl = float(np.mean(node1_ctrl))
+    mean_n2_ctrl = float(np.mean(node2_ctrl))
+    print(
+        f'\nControl (no input):\n'
+        f'  mean activity node 1: {mean_n1_ctrl:.4f}\n'
+        f'  mean activity node 2: {mean_n2_ctrl:.4f}'
+    )
+
+    encoding_detected = bias_X > 0 and bias_Y > 0
+    input_driven = mean_n1_ctrl < 0.05 and mean_n2_ctrl < 0.05
+    print(f'\nPattern encoding detected: {encoding_detected}')
+    print(f'Encoding is input-driven: {input_driven}')
+
+    # Coexistence test: probe G_pretrain with weak directional hints
+    node1_north, node2_north, internal_north = _run_probe(G_pretrain, 0.5, 0.3, 0.0)
+    node1_south, node2_south, internal_south = _run_probe(G_pretrain, 0.5, 0.0, 0.3)
+    node1_coex_ctrl, node2_coex_ctrl, internal_coex_ctrl = _run_probe(G_pretrain, 0.0, 0.0, 0.0)
+
+    mean_n1_north = float(np.mean(node1_north))
+    mean_n2_north = float(np.mean(node2_north))
+    mean_n1_south = float(np.mean(node1_south))
+    mean_n2_south = float(np.mean(node2_south))
+    patterns_coexist = mean_n1_north > mean_n2_north and mean_n2_south > mean_n1_south
+
+    print(
+        f'\nCoexistence test (after pretrain only):\n'
+        f'  Probe with north hint:\n'
+        f'    mean activity node 1 (north): {mean_n1_north:.4f}\n'
+        f'    mean activity node 2 (south): {mean_n2_north:.4f}\n'
+        f'  Probe with south hint:\n'
+        f'    mean activity node 1 (north): {mean_n1_south:.4f}\n'
+        f'    mean activity node 2 (south): {mean_n2_south:.4f}\n'
+        f'  Patterns coexist: {patterns_coexist}'
+    )
+
+    return {
+        'node1_X': node1_X, 'node2_X': node2_X, 'internal_X': internal_X,
+        'node1_Y': node1_Y, 'node2_Y': node2_Y, 'internal_Y': internal_Y,
+        'node1_ctrl': node1_ctrl, 'node2_ctrl': node2_ctrl, 'internal_ctrl': internal_ctrl,
+        'mean_n1_X': mean_n1_X, 'mean_n2_X': mean_n2_X,
+        'mean_n1_Y': mean_n1_Y, 'mean_n2_Y': mean_n2_Y,
+        'mean_n1_ctrl': mean_n1_ctrl, 'mean_n2_ctrl': mean_n2_ctrl,
+        'node1_north': node1_north, 'node2_north': node2_north, 'internal_north': internal_north,
+        'node1_south': node1_south, 'node2_south': node2_south, 'internal_south': internal_south,
+        'node1_coex_ctrl': node1_coex_ctrl, 'node2_coex_ctrl': node2_coex_ctrl,
+        'internal_coex_ctrl': internal_coex_ctrl,
+        'mean_n1_north': mean_n1_north, 'mean_n2_north': mean_n2_north,
+        'mean_n1_south': mean_n1_south, 'mean_n2_south': mean_n2_south,
+        'patterns_coexist': patterns_coexist,
+        'train_timesteps': train_timesteps,
+        'train_act_node0': train_act_node0,
+        'train_act_node1': train_act_node1,
+        'train_act_node2': train_act_node2,
+        'train_num_edges': train_num_edges,
+        'train_mean_weight': train_mean_weight,
+        'train_act_variance': train_act_variance,
+        'T_pretrain': T_pretrain,
+        'T_encode': T_encode,
+        'T_test': T_test,
+        'N': N,
+    }
+
+
+def plot_pattern_encoding_v2(data):
+    N = data['N']
+    T_test = data['T_test']
+    T_encode = data['T_encode']
+    test_ts = list(range(1, T_test + 1))
+
+    fig, axes = plt.subplots(3, 3, figsize=(15, 12), squeeze=False)
+    fig.suptitle(
+        f'Pattern encoding v2 (K=10, T_pretrain={data["T_pretrain"]}, '
+        f'T_encode={T_encode}, T_test={T_test})',
+        fontsize=13,
+    )
+    axes[0][0].set_title(f'Test after X  (X-only, T={T_encode})', fontsize=10)
+    axes[0][1].set_title(f'Test after Y  (Y-only, T={T_encode})', fontsize=10)
+    axes[0][2].set_title('Control  (no input, node 0 = 0.0)', fontsize=10)
+
+    cols = [
+        (data['node1_X'], data['node2_X'], data['internal_X'],
+         data['mean_n1_X'], data['mean_n2_X']),
+        (data['node1_Y'], data['node2_Y'], data['internal_Y'],
+         data['mean_n1_Y'], data['mean_n2_Y']),
+        (data['node1_ctrl'], data['node2_ctrl'], data['internal_ctrl'],
+         data['mean_n1_ctrl'], data['mean_n2_ctrl']),
+    ]
+
+    for col, (n1, n2, internal, mn1, mn2) in enumerate(cols):
+        # Row 1: node 1 and node 2 traces
+        axes[0][col].plot(test_ts, n1, label='Node 1 (north)', color='steelblue')
+        axes[0][col].plot(test_ts, n2, label='Node 2 (south)', color='tomato')
+        axes[0][col].set_ylim(-0.05, 1.1)
+        axes[0][col].set_ylabel('Activity', fontsize=9)
+        axes[0][col].legend(fontsize=8)
+        axes[0][col].grid(True, alpha=0.3)
+
+        # Row 2: internal node traces
+        for trace in internal:
+            axes[1][col].plot(test_ts, trace, alpha=0.4, linewidth=0.7)
+        axes[1][col].set_ylim(-0.05, 1.1)
+        axes[1][col].set_ylabel('Activity (nodes 3–19)', fontsize=9)
+        axes[1][col].grid(True, alpha=0.3)
+
+        # Row 3: bar chart
+        axes[2][col].bar(
+            ['North\n(node 1)', 'South\n(node 2)'],
+            [mn1, mn2],
+            color=['steelblue', 'tomato'], alpha=0.8, width=0.5,
+        )
+        axes[2][col].set_ylim(0, 1.1)
+        axes[2][col].set_ylabel('Mean activity', fontsize=9)
+        axes[2][col].grid(True, alpha=0.3, axis='y')
+
+    plt.tight_layout()
+    fname = 'images/results_pattern_encoding_v2.png'
+    plt.savefig(fname, dpi=150, bbox_inches='tight')
+    print(f'Saved {fname}')
+    plt.close()
+
+
+def plot_pattern_encoding_training_v2(data):
+    T_pretrain = data['T_pretrain']
+    ts = data['train_timesteps']
+    switches = list(range(100, T_pretrain, 100))
+
+    fig, axes = plt.subplots(4, 1, figsize=(12, 14), squeeze=False)
+    fig.suptitle(
+        f'Pattern encoding v2 — pretrain dynamics (K=10, T={T_pretrain}, alternating X/Y)',
+        fontsize=13,
+    )
+
+    axes[0][0].plot(ts, data['train_act_node0'], label='Node 0 (food)', color='seagreen')
+    axes[0][0].plot(ts, data['train_act_node1'], label='Node 1 (north)', color='steelblue')
+    axes[0][0].plot(ts, data['train_act_node2'], label='Node 2 (south)', color='tomato')
+    axes[0][0].set_ylabel('Activity', fontsize=9)
+    axes[0][0].legend(fontsize=8)
+    axes[0][0].grid(True, alpha=0.3)
+
+    axes[1][0].plot(ts, data['train_num_edges'], color='steelblue')
+    axes[1][0].set_ylabel('Number of edges', fontsize=9)
+    axes[1][0].grid(True, alpha=0.3)
+
+    axes[2][0].plot(ts, data['train_mean_weight'], color='seagreen')
+    axes[2][0].set_ylabel('Mean edge weight', fontsize=9)
+    axes[2][0].grid(True, alpha=0.3)
+
+    axes[3][0].plot(ts, data['train_act_variance'], color='dimgray')
+    axes[3][0].set_ylabel('Activity variance', fontsize=9)
+    axes[3][0].set_xlabel('Training timestep', fontsize=8)
+    axes[3][0].grid(True, alpha=0.3)
+
+    for ax in axes[:, 0]:
+        for sw in switches:
+            ax.axvline(sw, color='gray', linestyle='--', alpha=0.25, linewidth=0.8)
+
+    ax_top = axes[0][0]
+    block_edges = [0] + switches + [T_pretrain]
+    for b in range(0, len(block_edges) - 1, 2):
+        left, right = block_edges[b], block_edges[b + 1]
+        mid = (left + right) / 2
+        label = 'X' if (b // 1) % 2 == 0 else 'Y'
+        ax_top.text(mid, 1.01, label, ha='center', va='bottom',
+                    transform=ax_top.get_xaxis_transform(),
+                    fontsize=6, color='dimgray')
+
+    plt.tight_layout()
+    fname = 'images/results_pattern_encoding_training_v2.png'
+    plt.savefig(fname, dpi=150, bbox_inches='tight')
+    print(f'Saved {fname}')
+    plt.close()
+
+
+def plot_pattern_coexistence(data):
+    T_test = data['T_test']
+    test_ts = list(range(1, T_test + 1))
+
+    fig, axes = plt.subplots(3, 3, figsize=(15, 12), squeeze=False)
+    fig.suptitle(
+        f'Pattern coexistence test (K=10, T_pretrain={data["T_pretrain"]}, T_test={T_test})',
+        fontsize=13,
+    )
+    axes[0][0].set_title('Probe with north hint\n(node0=0.5, node1=0.3, node2=0.0)', fontsize=10)
+    axes[0][1].set_title('Probe with south hint\n(node0=0.5, node1=0.0, node2=0.3)', fontsize=10)
+    axes[0][2].set_title('Control  (no input)', fontsize=10)
+
+    mn1_coex_ctrl = float(np.mean(data['node1_coex_ctrl']))
+    mn2_coex_ctrl = float(np.mean(data['node2_coex_ctrl']))
+
+    cols = [
+        (data['node1_north'], data['node2_north'], data['internal_north'],
+         data['mean_n1_north'], data['mean_n2_north']),
+        (data['node1_south'], data['node2_south'], data['internal_south'],
+         data['mean_n1_south'], data['mean_n2_south']),
+        (data['node1_coex_ctrl'], data['node2_coex_ctrl'], data['internal_coex_ctrl'],
+         mn1_coex_ctrl, mn2_coex_ctrl),
+    ]
+
+    for col, (n1, n2, internal, mn1, mn2) in enumerate(cols):
+        axes[0][col].plot(test_ts, n1, label='Node 1 (north)', color='steelblue')
+        axes[0][col].plot(test_ts, n2, label='Node 2 (south)', color='tomato')
+        axes[0][col].set_ylim(-0.05, 1.1)
+        axes[0][col].set_ylabel('Activity', fontsize=9)
+        axes[0][col].legend(fontsize=8)
+        axes[0][col].grid(True, alpha=0.3)
+
+        for trace in internal:
+            axes[1][col].plot(test_ts, trace, alpha=0.4, linewidth=0.7)
+        axes[1][col].set_ylim(-0.05, 1.1)
+        axes[1][col].set_ylabel('Activity (nodes 3–19)', fontsize=9)
+        axes[1][col].grid(True, alpha=0.3)
+
+        axes[2][col].bar(
+            ['North\n(node 1)', 'South\n(node 2)'],
+            [mn1, mn2],
+            color=['steelblue', 'tomato'], alpha=0.8, width=0.5,
+        )
+        axes[2][col].set_ylim(0, 1.1)
+        axes[2][col].set_ylabel('Mean activity', fontsize=9)
+        axes[2][col].grid(True, alpha=0.3, axis='y')
+
+    coexist_str = 'True' if data['patterns_coexist'] else 'False'
+    fig.text(0.5, 0.01,
+             f'Patterns coexist: {coexist_str}  '
+             f'(north hint → node1 > node2 AND south hint → node2 > node1)',
+             ha='center', fontsize=10, color='darkgreen' if data['patterns_coexist'] else 'firebrick')
+
+    plt.tight_layout(rect=[0, 0.03, 1, 1])
+    fname = 'images/results_pattern_coexistence.png'
+    plt.savefig(fname, dpi=150, bbox_inches='tight')
+    print(f'Saved {fname}')
+    plt.close()
+
+
 if __name__ == "__main__":
     # results = run_input_comparison(K=20)
     # plot_input_comparison(results)
@@ -2644,5 +3322,14 @@ if __name__ == "__main__":
     # removal_data = run_input_removal_test()
     # plot_input_removal(removal_data)
 
-    res_A, res_B = run_fixed_topology_ei_test()
-    plot_fixed_topology_control(res_A, res_B)
+    # res_A, res_B = run_fixed_topology_ei_test()
+    # plot_fixed_topology_control(res_A, res_B)
+
+    # enc_data = run_pattern_encoding_experiment()
+    # plot_pattern_encoding(enc_data)
+    # plot_pattern_encoding_training(enc_data)
+
+    enc_data_v2 = run_pattern_encoding_experiment_v2()
+    plot_pattern_encoding_v2(enc_data_v2)
+    plot_pattern_encoding_training_v2(enc_data_v2)
+    plot_pattern_coexistence(enc_data_v2)
