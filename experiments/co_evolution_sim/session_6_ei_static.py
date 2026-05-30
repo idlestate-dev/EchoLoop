@@ -303,7 +303,7 @@ def run_ei_vs_static_context(expt_data, N=20, seed=42, n_episodes=10, T_episode=
     return results
 
 
-def plot_ei_vs_static_overwrite(data, fname='images/results_ei_vs_static_overwrite.png'):
+def plot_ei_vs_static_overwrite(data, fname='images/session_6/results_ei_vs_static_overwrite.png'):
     """Plot experiments A and B."""
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
     fig.suptitle('Session 6 — E/I (dynamic) vs pure Hebbian (static): '
@@ -376,13 +376,13 @@ def plot_ei_vs_static_overwrite(data, fname='images/results_ei_vs_static_overwri
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=100, bbox_inches='tight')
     plt.close()
     print(f'Saved {fname}')
 
 
-def plot_ei_vs_static_context(data, fname='images/results_ei_vs_static_context.png'):
+def plot_ei_vs_static_context(data, fname='images/session_6/results_ei_vs_static_context.png'):
     """Plot experiment C: context routing accuracy and loop activity."""
     conds = list(data.keys())
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
@@ -435,7 +435,7 @@ def plot_ei_vs_static_context(data, fname='images/results_ei_vs_static_context.p
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout(pad=1.5)
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=100)
     plt.close()
     print(f'Saved {fname}')

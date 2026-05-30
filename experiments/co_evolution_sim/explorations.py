@@ -218,7 +218,7 @@ def plot_comparison(results, K_values):
                 ax.set_xlabel('Activity timestep', fontsize=8)
 
     plt.tight_layout()
-    fname = 'images/results_comparison_fine.png'
+    fname = 'images/explorations/results_comparison_fine.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -266,7 +266,7 @@ def plot_input_comparison(results):
                 ax.set_xlabel('Activity timestep', fontsize=8)
 
     plt.tight_layout()
-    fname = 'images/results_input_comparison.png'
+    fname = 'images/explorations/results_input_comparison.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -321,7 +321,7 @@ def plot_topology_fingerprint(results):
         ax.set_ylabel('Clustering coeff.', fontsize=8)
 
     plt.tight_layout()
-    fname = 'images/results_topology_fingerprint.png'
+    fname = 'images/explorations/results_topology_fingerprint.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -472,7 +472,7 @@ def plot_encoding(enc):
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fname = 'images/results_encoding.png'
+    fname = 'images/explorations/results_encoding.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -513,7 +513,7 @@ def plot_stdp_comparison(results, patterns):
                 ax.set_xlabel('Activity timestep', fontsize=8)
 
     plt.tight_layout()
-    fname = 'images/results_stdp_comparison.png'
+    fname = 'images/explorations/results_stdp_comparison.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -561,7 +561,7 @@ def plot_stdp_fingerprint(results, patterns):
         ax.set_ylabel('Clustering coeff.', fontsize=8)
 
     plt.tight_layout()
-    fname = 'images/results_stdp_fingerprint.png'
+    fname = 'images/explorations/results_stdp_fingerprint.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -598,7 +598,7 @@ def plot_stdp_encoding(enc):
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fname = 'images/results_stdp_encoding.png'
+    fname = 'images/explorations/results_stdp_encoding.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -820,7 +820,7 @@ def plot_delta_comparison(results, K_values):
                 ax.set_xlabel('Activity timestep', fontsize=8)
 
     plt.tight_layout()
-    fname = 'images/results_delta_comparison.png'
+    fname = 'images/explorations/results_delta_comparison.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -898,7 +898,7 @@ def plot_convergence_test(results):
                 ax.set_xlabel('Activity timestep', fontsize=8)
 
     plt.tight_layout()
-    fname = 'images/results_convergence.png'
+    fname = 'images/explorations/results_convergence.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -1064,7 +1064,7 @@ def plot_cycle_analysis(snapshots):
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fname = 'images/results_cycle_analysis.png'
+    fname = 'images/explorations/results_cycle_analysis.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -1356,7 +1356,7 @@ def plot_ei_comparison(orig, orig_snapshots, ei):
         ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fname = 'images/results_ei_comparison.png'
+    fname = 'images/explorations/results_ei_comparison.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -1505,7 +1505,7 @@ def plot_inhibition_sweep(results):
                 axes[row][col].set_ylabel(row_labels[row], fontsize=9)
 
     plt.tight_layout()
-    fname = 'images/results_ei_inhibition.png'
+    fname = 'images/explorations/results_ei_inhibition.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -1599,7 +1599,7 @@ def plot_threshold_sweep(results):
                 axes[row][col].set_ylabel(row_labels[row], fontsize=9)
 
     plt.tight_layout()
-    fname = 'images/results_ei_threshold.png'
+    fname = 'images/explorations/results_ei_threshold.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -1905,7 +1905,7 @@ def plot_silencing_sweep(results):
                 axes[row][col].set_ylabel(row_labels[row], fontsize=9)
 
     plt.tight_layout()
-    fname = 'images/results_ei_silencing.png'
+    fname = 'images/explorations/results_ei_silencing.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -2208,7 +2208,7 @@ def plot_isolation_sweep(results):
                 axes[row][col].set_ylabel(row_labels[row], fontsize=9)
 
     plt.tight_layout()
-    fname = 'images/results_ei_isolation.png'
+    fname = 'images/explorations/results_ei_isolation.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -2416,7 +2416,7 @@ def plot_input_removal(data):
                     fontsize=8, color='dimgray', style='italic')
 
     plt.tight_layout()
-    fname = 'images/results_input_removal.png'
+    fname = 'images/explorations/results_input_removal.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -2611,7 +2611,7 @@ def plot_fixed_topology_control(res_A, res_B):
         axes[row][0].set_ylabel(row_labels[row], fontsize=9)
 
     plt.tight_layout()
-    fname = 'images/results_fixed_topology_control.png'
+    fname = 'images/explorations/results_fixed_topology_control.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -2825,7 +2825,7 @@ def plot_pattern_encoding(data):
         axes[2][col].grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    fname = 'images/results_pattern_encoding.png'
+    fname = 'images/explorations/results_pattern_encoding.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -2883,7 +2883,7 @@ def plot_pattern_encoding_training(data):
                     fontsize=6, color='dimgray')
 
     plt.tight_layout()
-    fname = 'images/results_pattern_encoding_training.png'
+    fname = 'images/explorations/results_pattern_encoding_training.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -3176,7 +3176,7 @@ def plot_pattern_encoding_v2(data):
         axes[2][col].grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    fname = 'images/results_pattern_encoding_v2.png'
+    fname = 'images/explorations/results_pattern_encoding_v2.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -3228,7 +3228,7 @@ def plot_pattern_encoding_training_v2(data):
                     fontsize=6, color='dimgray')
 
     plt.tight_layout()
-    fname = 'images/results_pattern_encoding_training_v2.png'
+    fname = 'images/explorations/results_pattern_encoding_training_v2.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -3289,7 +3289,7 @@ def plot_pattern_coexistence(data):
              ha='center', fontsize=10, color='darkgreen' if data['patterns_coexist'] else 'firebrick')
 
     plt.tight_layout(rect=[0, 0.03, 1, 1])
-    fname = 'images/results_pattern_coexistence.png'
+    fname = 'images/explorations/results_pattern_coexistence.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -3510,7 +3510,7 @@ def plot_loop_resonance(data):
     )
 
     plt.tight_layout(rect=[0, 0.04, 1, 1])
-    fname = 'images/results_loop_resonance_asymmetric.png'
+    fname = 'images/explorations/results_loop_resonance_asymmetric.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -3718,7 +3718,7 @@ def plot_loop_combination(data):
     )
 
     plt.tight_layout(rect=[0, 0.05, 1, 1])
-    fname = 'images/results_loop_combination.png'
+    fname = 'images/explorations/results_loop_combination.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -3968,7 +3968,7 @@ def plot_association(data):
     )
 
     plt.tight_layout(rect=[0, 0.05, 1, 1])
-    fname = 'images/results_association_long.png'
+    fname = 'images/explorations/results_association_long.png'
     plt.savefig(fname, dpi=150, bbox_inches='tight')
     print(f'Saved {fname}')
     plt.close()
@@ -4063,7 +4063,7 @@ def run_world_experiment(n_agents=10, n_episodes=20, N=25, K=10, temperature=0.5
     }
 
 
-def plot_world_results(data, fname='images/results_world.png'):
+def plot_world_results(data, fname='images/explorations/results_world.png'):
     n_agents = data['n_agents']
     n_episodes = data['n_episodes']
     episode_numbers = np.arange(1, n_episodes + 1)
@@ -4264,7 +4264,7 @@ def run_evolutionary_experiment(n_generations=20, n_agents=10, n_episodes_per_ag
     }
 
 
-def plot_evolution_results(data, fname='images/results_evolution.png'):
+def plot_evolution_results(data, fname='images/explorations/results_evolution.png'):
     n_gen = data['n_generations']
     gens = np.arange(1, n_gen + 1)
     mean_surv = np.array(data['gen_mean_survival'])
@@ -4544,7 +4544,7 @@ def run_coevolution_experiment(n_generations=50, n_agents=10, n_episodes_per_age
     }
 
 
-def plot_coevolution_results(data, fname='images/results_evolution_coevolve.png'):
+def plot_coevolution_results(data, fname='images/explorations/results_evolution_coevolve.png'):
     n_gen = data['n_generations']
     gens = np.arange(1, n_gen + 1)
     mean_surv = np.array(data['gen_mean_survival'])
@@ -4687,7 +4687,7 @@ def run_evolution_readout_only(n_generations=50, n_agents=10, n_episodes_per_age
 
 
 def plot_evolution_control(coevo_data, readout_only_data,
-                           fname='images/results_evolution_control.png'):
+                           fname='images/explorations/results_evolution_control.png'):
     n_gen = coevo_data['n_generations']
     gens = np.arange(1, n_gen + 1)
 
@@ -4892,7 +4892,7 @@ def run_world_association_experiment(n_episodes=10, N=25, K=10, seed=42,
     }
 
 
-def plot_world_association(data, fname='images/results_world_association.png'):
+def plot_world_association(data, fname='images/explorations/results_world_association.png'):
     from matplotlib.patches import Patch
 
     all_acts = data['all_acts']        # (T, 16)

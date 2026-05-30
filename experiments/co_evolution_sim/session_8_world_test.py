@@ -184,7 +184,7 @@ def run_world_test_experiment(N=20, seed=42, n_agents=10, n_episodes=20):
     }
 
 
-def plot_world_test(data, fname='images/results_world_test.png'):
+def plot_world_test(data, fname='images/session_8/results_world_test.png'):
     results    = data['results']
     n_episodes = data['n_episodes']
 
@@ -275,7 +275,7 @@ def plot_world_test(data, fname='images/results_world_test.png'):
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=120, bbox_inches='tight')
     plt.close()
     print(f'Saved {fname}')

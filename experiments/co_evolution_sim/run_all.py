@@ -123,7 +123,7 @@ os.makedirs('images', exist_ok=True)
 # plot_context_ei_evolution(context_evo_data, simple_data=None)
 # context_sparse = run_sparse_association(context_evo_data['best_genome'], seed=42)
 # plot_sparse_association(
-#     context_sparse, fname='images/results_context_sparse_association.png')
+#     context_sparse, fname='images/session_4/results_context_sparse_association.png')
 # context_comp = run_context_comparison(
 #     _simple_genome, context_evo_data['best_genome'], seed=42)
 # plot_context_comparison(context_comp)

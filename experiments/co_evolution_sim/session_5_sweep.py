@@ -152,7 +152,7 @@ def run_association_sweep(N=20, seed=42, K=5, T_phase=500, T_probe=200):
     return results
 
 
-def plot_association_sweep(results, fname='images/results_association_sweep.png'):
+def plot_association_sweep(results, fname='images/session_5/results_association_sweep.png'):
     densities    = [0.2, 0.4, 0.6]
     init_weights = [0.05, 0.2, 0.5]
     lrs          = [0.05, 0.1, 0.2]
@@ -191,13 +191,13 @@ def plot_association_sweep(results, fname='images/results_association_sweep.png'
             ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=100, bbox_inches='tight')
     plt.close()
     print(f'Saved {fname}')
 
 
-def plot_association_probe(results, fname='images/results_association_probe.png'):
+def plot_association_probe(results, fname='images/session_5/results_association_probe.png'):
     true_rs = [r for r in results if r['association']]
     if not true_rs:
         # Fall back: show top-6 by north reactivation
@@ -234,7 +234,7 @@ def plot_association_probe(results, fname='images/results_association_probe.png'
         axes[idx // cols][idx % cols].set_visible(False)
 
     plt.tight_layout()
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=100, bbox_inches='tight')
     plt.close()
     print(f'Saved {fname}')

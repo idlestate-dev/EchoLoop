@@ -202,7 +202,7 @@ def run_context_control_experiment(best_key, N=20, seed=42, T_probe=200):
     return {'ctrl_A': ctrl_A, 'ctrl_B': ctrl_B}
 
 
-def plot_context_activation(data, fname='images/results_context_activation.png'):
+def plot_context_activation(data, fname='images/session_7/results_context_activation.png'):
     sweep         = data['sweep']
     phase_lengths = [500, 1000, 2000]
     sw_intervals  = [50, 100, 200]
@@ -249,13 +249,13 @@ def plot_context_activation(data, fname='images/results_context_activation.png')
                 plt.colorbar(im, ax=ax, fraction=0.07, pad=0.02, label='Mean act.')
 
     plt.tight_layout()
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=120, bbox_inches='tight')
     plt.close()
     print(f'Saved {fname}')
 
 
-def plot_context_topology(data, fname='images/results_context_topology.png'):
+def plot_context_topology(data, fname='images/session_7/results_context_topology.png'):
     topo          = data['topology']
     phase_lengths = [500, 1000, 2000]
     sw_intervals  = [50, 100, 200]
@@ -298,14 +298,14 @@ def plot_context_topology(data, fname='images/results_context_topology.png'):
                bbox_to_anchor=(1.01, 1.0))
 
     plt.tight_layout()
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=120, bbox_inches='tight')
     plt.close()
     print(f'Saved {fname}')
 
 
 def plot_context_control(sweep_data, ctrl_data, best_key,
-                          fname='images/results_context_control.png'):
+                          fname='images/session_7/results_context_control.png'):
     best_probe = sweep_data['sweep'][best_key]
     ctrl_A     = ctrl_data['ctrl_A']
     ctrl_B     = ctrl_data['ctrl_B']
@@ -344,7 +344,7 @@ def plot_context_control(sweep_data, ctrl_data, best_key,
         ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    os.makedirs('images', exist_ok=True)
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     plt.savefig(fname, dpi=120, bbox_inches='tight')
     plt.close()
     print(f'Saved {fname}')

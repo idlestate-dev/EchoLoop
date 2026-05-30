@@ -194,7 +194,7 @@ def run_ei_threshold_evolution(n_agents=10, n_generations=30, n_survivors=3,
     }
 
 
-def plot_ei_evolution(data, fname='images/results_ei_evolution.png'):
+def plot_ei_evolution(data, fname='images/session_3/results_ei_evolution.png'):
     n_gen = data['n_generations']
     gens = np.arange(1, n_gen + 1)
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), squeeze=False)
@@ -439,7 +439,7 @@ def run_sparse_association(genome, N=20, seed=42, K=5, T_probe=200):
     }
 
 
-def plot_sparse_association(data, fname='images/results_sparse_association.png'):
+def plot_sparse_association(data, fname='images/session_3/results_sparse_association.png'):
     probe_labels = [
         'Probe 1\n(food, baseline)',
         'Probe 2\n(north, baseline)',
@@ -613,7 +613,7 @@ def run_sparse_comparison(evolved_genome, N=20, seed=42, K=5, T_probe=200):
     return {'evolved': res_evolved, 'fixed': res_fixed, 'wta': res_wta}
 
 
-def plot_sparse_comparison(data, fname='images/results_sparse_comparison.png'):
+def plot_sparse_comparison(data, fname='images/session_3/results_sparse_comparison.png'):
     conditions = ['evolved', 'fixed', 'wta']
     cond_labels = ['Evolved E/I', 'Fixed E/I\n(thr=0.9)', 'k-sparse WTA\n(k=3)']
     phase_labels = ['Ph1\nnorth', 'Ph2\nfood', 'Ph3\nnorth+food', 'Ph4\nsouth+food']

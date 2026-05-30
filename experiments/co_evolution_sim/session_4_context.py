@@ -187,7 +187,7 @@ def run_context_ei_evolution(n_agents=10, n_generations=30, n_survivors=3,
 
 
 def plot_context_ei_evolution(context_data, simple_data=None,
-                               fname='images/results_context_ei_evolution.png'):
+                               fname='images/session_4/results_context_ei_evolution.png'):
     """Plot context evolution genome convergence, optionally overlaid with simple-GridWorld results."""
     n_gen = context_data['n_generations']
     gens = np.arange(1, n_gen + 1)
@@ -383,7 +383,7 @@ def run_context_comparison(simple_genome, context_genome, N=20, K=10,
     return results
 
 
-def plot_context_comparison(data, fname='images/results_context_comparison.png'):
+def plot_context_comparison(data, fname='images/session_4/results_context_comparison.png'):
     cond_keys = list(data.keys())
     n_conds = len(cond_keys)
     fig, axes = plt.subplots(2, n_conds, figsize=(5 * n_conds, 10), squeeze=False)
