@@ -179,7 +179,59 @@ plot_context_control(s7_data, s7_ctrl, s7_best)
 
 
 # ─── Session 8: 世界に問う ────────────────────────────────────────────────────
-from session_8_world_test import run_world_test_experiment, plot_world_test
+# from session_8_world_test import run_world_test_experiment, plot_world_test
+# s8_data = run_world_test_experiment(N=20, seed=42, n_agents=10, n_episodes=20)
+# plot_world_test(s8_data)
 
-s8_data = run_world_test_experiment(N=20, seed=42, n_agents=10, n_episodes=20)
-plot_world_test(s8_data)
+
+# ─── Session 9: 世界がトポロジーを彫刻するメカニズム ──────────────────────────
+# from session_9_topology_sculpting import (
+#     run_topology_convergence, plot_topology_convergence,
+#     run_survivor_topology,    plot_survivor_topology,
+#     run_experience_trace,     plot_experience_trace,
+# )
+# s9_expA = run_topology_convergence(seed=42, T_total=5000, snapshot_interval=500)
+# plot_topology_convergence(s9_expA)
+# s9_expB = run_survivor_topology(seed=42, n_agents=20)
+# plot_survivor_topology(s9_expB)
+# s9_expC = run_experience_trace(s9_expB)
+# plot_experience_trace(s9_expC)
+
+
+# ─── Session 10: アウトプットノードによる身体化 ───────────────────────────────
+# from session_10_embodied_output import (
+#     run_single_agent,    plot_single_agent,
+#     run_evolution,       plot_evolution,
+#     run_action_patterns, plot_action_patterns,
+# )
+# s10_expA = run_single_agent(seed=42, T_total=10000, window=1000)
+# plot_single_agent(s10_expA)
+# s10_expB = run_evolution(seed=42, n_gen=50, n_agents=10, n_ep=5, n_surv=3)
+# plot_evolution(s10_expB)
+# s10_expC = run_action_patterns(s10_expB['new']['best_G'], s10_expB['new']['best_W'],
+#                                seed=42, n_ep=30)
+# plot_action_patterns(s10_expC)
+
+
+# ─── Session 11: 自発的ノイズによる局所最適からの脱出 ──────────────────────────
+# from session_11_noise_escape import (
+#     run_noise_sweep, plot_noise_sweep,
+#     run_evolution as run_s11_evolution, plot_evolution as plot_s11_evolution,
+# )
+# s11_expA = run_noise_sweep(seed=42)
+# plot_noise_sweep(s11_expA)
+# s11_expB = run_s11_evolution(seed=42, best_noise=s11_expA['best_condition'])
+# plot_s11_evolution(s11_expB)
+
+
+# ─── Session 12: 探索と記憶の固定（睡眠仮説）────────────────────────────────────
+from session_12_sleep_consolidation import (
+    run_consolidation_sweep, plot_consolidation_sweep,
+    run_evolution as run_s12_evolution, plot_evolution as plot_s12_evolution,
+)
+
+s12_expA = run_consolidation_sweep(seed=42)
+plot_consolidation_sweep(s12_expA)
+
+s12_expB = run_s12_evolution(seed=42, best_T=s12_expA['best_T'])
+plot_s12_evolution(s12_expB)
