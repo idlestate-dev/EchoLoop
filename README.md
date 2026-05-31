@@ -117,6 +117,95 @@ These are loose references, not claims of formal equivalence. EchoLoop does not 
 
 ---
 
+## What this project does and does not claim
+
+### What EchoLoop does
+
+- Provides a minimal toy model for observing how network topology changes under survival-only selection
+- Demonstrates that removing a static readout layer exposes a hidden dependency on behavioral diversity mechanisms
+- Shows that exploration noise and sleep-like consolidation can partially substitute for a static readout in a small-scale setting (N=20)
+- Reports reproducible structural differences between readout-based and embodied-output architectures (10 seeds, 3 criteria ≥8/10)
+
+### What EchoLoop does NOT claim
+
+- That reward-free value emergence has been proven
+- That the observed recurrent structures perform meaningful computation
+- That results scale beyond N=20
+- That this is a theory of intelligence, consciousness, or biological cognition
+- That EchoLoop outperforms established neuroevolution methods (NEAT etc.)
+- That context-dependent routing has been achieved
+
+### Current status
+
+Preliminary research snapshot.
+Independent replication encouraged.
+Hyperparameter sensitivity and scaling experiments are planned but not yet completed.
+
+---
+
+## Quick Start
+
+```bash
+# Install dependencies
+pip install numpy networkx matplotlib scipy
+
+# Run Session 12 (sleep consolidation)
+cd experiments/co_evolution_sim
+python session_12_sleep_consolidation.py
+
+# Run Session 14 (reproducibility check)
+python session_14_reproducibility.py
+```
+
+---
+
+## Project Structure
+
+```
+echoloop/
+├── scripts/                          # Core EchoLoop scripts (v1–v5)
+│   ├── echoloop.py                   # v1: initial route graph
+│   ├── echoloop2.py                  # v2: single limit cycle
+│   ├── echoloop3.py                  # v3: 3-loop competition
+│   ├── echoloop4.py                  # v4: fatigue
+│   └── echoloop5.py                  # v5: shared bridge routes
+├── experiments/
+│   └── co_evolution_sim/             # Embodied neuroevolution (Sessions 3–14)
+│       ├── session_10_embodied_output.py    # Output node architecture
+│       ├── session_11_noise_escape.py       # Exploratory noise
+│       ├── session_12_sleep_consolidation.py # Sleep-like consolidation
+│       ├── session_13_anatomy.py            # Structural analysis
+│       ├── session_14_reproducibility.py    # 10-seed reproducibility
+│       ├── images/                   # Generated figures
+│       └── results_s14_raw.csv       # Raw reproducibility data
+├── images/                           # EchoLoop v1–v5 figures
+└── results/                          # Results summaries
+```
+
+---
+
+## Key Findings (preliminary)
+
+Removing the readout layer from a survival-only agent:
+1. Collapsed behavioral diversity → local optima
+2. Exploratory noise restored diversity but prevented stable inheritance
+3. Sleep-like consolidation resolved this tension
+4. Survivors show 7–18 hop input-to-output paths vs 1–5 hops in readout-based agents (9/10 seeds)
+5. Ablation sensitivity differs between survivors and non-survivors (8/10 seeds)
+
+Static readouts can hide the problem of behavioral diversity in embodied agents; when removed, exploration and consolidation dynamics become necessary for stable adaptive behavior.
+
+---
+
+## Citation
+
+If you reference this work, please cite:
+
+[Your Name] (2026). EchoLoop: Embodied Neuroevolution Without a Readout Layer (v0.1.0).
+Zenodo. https://doi.org/[TBD]
+
+---
+
 ## License
 
 MIT
