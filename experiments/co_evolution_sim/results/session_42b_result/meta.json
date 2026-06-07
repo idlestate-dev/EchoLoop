@@ -1,0 +1,14 @@
+{
+  "node_sizes": [
+    25,
+    40
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "T_phase2": 5000,
+  "T_context": 2000,
+  "chunk_size": 100
+}
